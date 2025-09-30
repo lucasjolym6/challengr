@@ -100,6 +100,8 @@ export default function Profile() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (user) {
@@ -444,6 +446,78 @@ export default function Profile() {
     });
   };
 
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Error",
+        description: "Please select an image file",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "Image must be less than 2MB",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setUploadingAvatar(true);
+
+    try {
+      // Create unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
+      // Upload to Supabase storage
+      const { error: uploadError, data } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      // Update profile with new avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('user_id', user.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "Success",
+        description: "Profile photo updated successfully"
+      });
+
+      fetchProfile();
+    } catch (error) {
+      console.error('Avatar upload error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload profile photo",
+        variant: "destructive"
+      });
+    } finally {
+      setUploadingAvatar(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6 space-y-6 animate-pulse">
@@ -470,10 +544,19 @@ export default function Profile() {
                   {profile?.display_name?.charAt(0) || profile?.username?.charAt(0) || 'U'}
                 </AvatarFallback>
               </Avatar>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                className="hidden"
+              />
               <Button
                 size="sm"
                 variant="outline"
                 className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingAvatar}
               >
                 <Camera className="h-4 w-4" />
               </Button>
