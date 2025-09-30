@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SubmissionValidationCard } from "./SubmissionValidationCard";
+import { PostVerificationCard } from "./PostVerificationCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Bell, CheckCircle, Clock, AlertTriangle } from "lucide-react";
+import { Bell, CheckCircle, Clock, AlertTriangle, FileText } from "lucide-react";
 
 interface Submission {
   id: string;
@@ -32,10 +33,36 @@ interface Submission {
   };
 }
 
+interface Post {
+  id: string;
+  content: string;
+  image_url: string | null;
+  created_at: string;
+  user_id: string;
+  verified: boolean;
+  user_challenge_id: string | null;
+  hashtags: string[] | null;
+  profiles: {
+    username: string;
+    display_name: string;
+    avatar_url: string | null;
+  };
+  user_challenges?: {
+    challenges: {
+      title: string;
+      challenge_categories: {
+        name: string;
+        icon: string;
+      } | null;
+    };
+  } | null;
+}
+
 export function ValidationQueue() {
   const { toast } = useToast();
   const [pendingSubmissions, setPendingSubmissions] = useState<Submission[]>([]);
   const [myValidations, setMyValidations] = useState<Submission[]>([]);
+  const [pendingPosts, setPendingPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [validationCapabilities, setValidationCapabilities] = useState<Record<string, boolean>>({});
@@ -152,6 +179,33 @@ export function ValidationQueue() {
       setPendingSubmissions(pending);
       setMyValidations(myValidated);
       setValidationCapabilities(capabilities);
+
+      // Fetch unverified posts for challenges I created
+      const { data: postsData, error: postsError } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          profiles (username, display_name, avatar_url),
+          user_challenges (
+            challenges (
+              id,
+              title,
+              created_by,
+              challenge_categories (name, icon)
+            )
+          )
+        `)
+        .eq('verified', false)
+        .order('created_at', { ascending: true });
+
+      if (postsError) throw postsError;
+
+      // Filter posts for challenges I created
+      const myPosts = (postsData || []).filter(post => 
+        post.user_challenges?.challenges?.created_by === currentUserId
+      );
+
+      setPendingPosts(myPosts);
     } catch (error) {
       console.error('Error fetching submissions:', error);
       toast({
@@ -176,28 +230,34 @@ export function ValidationQueue() {
     validationCapabilities[s.id]
   ).length;
 
+  const totalPending = pendingCount + pendingPosts.length;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Validation Queue</h2>
           <p className="text-muted-foreground">
-            Review and validate challenge submissions from the community
+            Review and validate challenge submissions and posts from the community
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Bell className="w-5 h-5" />
-          <Badge variant={pendingCount > 0 ? "default" : "secondary"}>
-            {pendingCount} pending
+          <Badge variant={totalPending > 0 ? "default" : "secondary"}>
+            {totalPending} pending
           </Badge>
         </div>
       </div>
 
       <Tabs defaultValue="pending" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="pending" className="flex items-center gap-2">
             <Clock className="w-4 h-4" />
-            Pending Validation ({pendingCount})
+            Submissions ({pendingCount})
+          </TabsTrigger>
+          <TabsTrigger value="posts" className="flex items-center gap-2">
+            <FileText className="w-4 h-4" />
+            Posts ({pendingPosts.length})
           </TabsTrigger>
           <TabsTrigger value="my-validations" className="flex items-center gap-2">
             <CheckCircle className="w-4 h-4" />
@@ -254,6 +314,32 @@ export function ValidationQueue() {
                   />
                 );
               })}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="posts" className="space-y-4">
+          {loading ? (
+            <div className="text-center py-8">Loading posts...</div>
+          ) : pendingPosts.length === 0 ? (
+            <Card>
+              <CardContent className="text-center py-8">
+                <CheckCircle className="w-12 h-12 mx-auto text-green-500 mb-4" />
+                <h3 className="text-lg font-medium mb-2">All posts verified!</h3>
+                <p className="text-muted-foreground">
+                  There are no pending posts to verify right now.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {pendingPosts.map((post) => (
+                <PostVerificationCard
+                  key={post.id}
+                  post={post}
+                  onVerificationComplete={handleValidationComplete}
+                />
+              ))}
             </div>
           )}
         </TabsContent>

@@ -74,6 +74,7 @@ const ChallengeFeed: React.FC = () => {
             )
           )
         `)
+        .eq('verified', true)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

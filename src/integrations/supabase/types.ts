@@ -338,6 +338,7 @@ export type Database = {
           likes_count: number | null
           user_challenge_id: string | null
           user_id: string
+          verified: boolean
         }
         Insert: {
           comments_count?: number | null
@@ -349,6 +350,7 @@ export type Database = {
           likes_count?: number | null
           user_challenge_id?: string | null
           user_id: string
+          verified?: boolean
         }
         Update: {
           comments_count?: number | null
@@ -360,6 +362,7 @@ export type Database = {
           likes_count?: number | null
           user_challenge_id?: string | null
           user_id?: string
+          verified?: boolean
         }
         Relationships: [
           {
