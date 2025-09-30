@@ -829,6 +829,10 @@ export type Database = {
         Args: { submission_id_param: string; validator_user_id: string }
         Returns: boolean
       }
+      can_view_submission: {
+        Args: { _submission_id: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
