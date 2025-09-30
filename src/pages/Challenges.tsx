@@ -15,6 +15,7 @@ import { Plus, Filter, Grid3X3, List, Users, User, Play, CheckCircle, Trophy, Me
 import ChallengeDetailDialog from "@/components/challenges/ChallengeDetailDialog";
 import ChallengeFeed from "@/components/challenges/ChallengeFeed";
 import CommunityStats from "@/components/challenges/CommunityStats";
+import { CreateChallengeDialog } from "@/components/challenges/CreateChallengeDialog";
 
 interface Challenge {
   id: string;
@@ -540,6 +541,13 @@ const Challenges = () => {
         isOpen={showDetailDialog}
         onClose={() => setShowDetailDialog(false)}
         onStatusUpdate={fetchData}
+      />
+
+      <CreateChallengeDialog
+        isOpen={showCreateDialog}
+        onClose={() => setShowCreateDialog(false)}
+        onChallengeCreated={fetchData}
+        categories={categories}
       />
     </div>
   );

@@ -53,7 +53,10 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
   const { toast } = useToast();
   const [submissionText, setSubmissionText] = useState('');
   const [submissionImage, setSubmissionImage] = useState<File | null>(null);
+  const [submissionVideo, setSubmissionVideo] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [canValidate, setCanValidate] = useState(false);
+  const [pendingValidations, setPendingValidations] = useState<UserChallenge[]>([]);
 
   if (!challenge) return null;
 

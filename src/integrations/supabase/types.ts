@@ -76,10 +76,12 @@ export type Database = {
           description: string | null
           difficulty_level: number | null
           id: string
+          image_url: string | null
           is_active: boolean | null
           is_custom: boolean | null
           points_reward: number | null
           title: string
+          video_url: string | null
         }
         Insert: {
           category_id?: string | null
@@ -88,10 +90,12 @@ export type Database = {
           description?: string | null
           difficulty_level?: number | null
           id?: string
+          image_url?: string | null
           is_active?: boolean | null
           is_custom?: boolean | null
           points_reward?: number | null
           title: string
+          video_url?: string | null
         }
         Update: {
           category_id?: string | null
@@ -100,10 +104,12 @@ export type Database = {
           description?: string | null
           difficulty_level?: number | null
           id?: string
+          image_url?: string | null
           is_active?: boolean | null
           is_custom?: boolean | null
           points_reward?: number | null
           title?: string
+          video_url?: string | null
         }
         Relationships: [
           {
@@ -337,6 +343,9 @@ export type Database = {
           started_at: string | null
           status: string | null
           user_id: string
+          validated_at: string | null
+          validated_by: string | null
+          validation_status: string | null
         }
         Insert: {
           challenge_id: string
@@ -348,6 +357,9 @@ export type Database = {
           started_at?: string | null
           status?: string | null
           user_id: string
+          validated_at?: string | null
+          validated_by?: string | null
+          validation_status?: string | null
         }
         Update: {
           challenge_id?: string
@@ -359,6 +371,9 @@ export type Database = {
           started_at?: string | null
           status?: string | null
           user_id?: string
+          validated_at?: string | null
+          validated_by?: string | null
+          validation_status?: string | null
         }
         Relationships: [
           {
@@ -376,6 +391,33 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      user_friends: {
+        Row: {
+          created_at: string
+          friend_id: string
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          friend_id: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          friend_id?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {

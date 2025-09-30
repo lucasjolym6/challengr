@@ -26,7 +26,8 @@ import {
   Award,
   Target,
   Calendar,
-  Image as ImageIcon
+  Image as ImageIcon,
+  CheckCircle
 } from "lucide-react";
 
 interface Profile {
@@ -71,7 +72,7 @@ interface Friend {
   user_id: string;
   friend_id: string;
   status: string;
-  profiles: Profile;
+  profiles: Profile | null;
 }
 
 export default function Profile() {
@@ -96,7 +97,7 @@ export default function Profile() {
     bio: '',
     skills: [] as string[]
   });
-  const [searchFriend, setSearchFriend] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -236,42 +237,76 @@ export default function Profile() {
   };
 
   const fetchFriends = async () => {
-    if (!user) return;
+    if (!user?.id) return;
 
-    const { data, error } = await supabase
-      .from('user_friends')
-      .select(`
-        id,
-        user_id,
-        friend_id,
-        status,
-        profiles!user_friends_friend_id_fkey (*)
-      `)
-      .eq('user_id', user.id)
-      .eq('status', 'accepted');
+    try {
+      const { data: friendsData, error: friendsError } = await supabase
+        .from('user_friends')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'accepted');
 
-    if (data && !error) {
-      setFriends(data);
+      if (friendsError) {
+        console.error('Error fetching friends:', friendsError);
+        return;
+      }
+
+      // Fetch profile data separately to avoid complex joins
+      if (friendsData && friendsData.length > 0) {
+        const friendIds = friendsData.map(f => f.friend_id);
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('user_id', friendIds);
+
+        const friendsWithProfiles = friendsData.map(friend => ({
+          ...friend,
+          profiles: profilesData?.find(p => p.user_id === friend.friend_id) || null
+        }));
+
+        setFriends(friendsWithProfiles);
+      } else {
+        setFriends([]);
+      }
+    } catch (error) {
+      console.error('Error fetching friends:', error);
     }
   };
 
   const fetchFriendRequests = async () => {
-    if (!user) return;
+    if (!user?.id) return;
 
-    const { data, error } = await supabase
-      .from('user_friends')
-      .select(`
-        id,
-        user_id,
-        friend_id,
-        status,
-        profiles!user_friends_user_id_fkey (*)
-      `)
-      .eq('friend_id', user.id)
-      .eq('status', 'pending');
+    try {
+      const { data: requestsData, error: requestsError } = await supabase
+        .from('user_friends')
+        .select('*')
+        .eq('friend_id', user.id)
+        .eq('status', 'pending');
 
-    if (data && !error) {
-      setFriendRequests(data);
+      if (requestsError) {
+        console.error('Error fetching friend requests:', requestsError);
+        return;
+      }
+
+      // Fetch profile data separately
+      if (requestsData && requestsData.length > 0) {
+        const requesterIds = requestsData.map(r => r.user_id);
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('user_id', requesterIds);
+
+        const requestsWithProfiles = requestsData.map(request => ({
+          ...request,
+          profiles: profilesData?.find(p => p.user_id === request.user_id) || null
+        }));
+
+        setFriendRequests(requestsWithProfiles);
+      } else {
+        setFriendRequests([]);
+      }
+    } catch (error) {
+      console.error('Error fetching friend requests:', error);
     }
   };
 
@@ -304,12 +339,12 @@ export default function Profile() {
   };
 
   const searchFriends = async () => {
-    if (!searchFriend.trim()) return;
+    if (!searchQuery.trim()) return;
 
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .or(`username.ilike.%${searchFriend}%,display_name.ilike.%${searchFriend}%`)
+      .or(`username.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%`)
       .neq('user_id', user?.id)
       .limit(5);
 
@@ -319,51 +354,77 @@ export default function Profile() {
   };
 
   const sendFriendRequest = async (friendId: string) => {
-    if (!user) return;
+    if (!user?.id) return;
 
-    const { error } = await supabase
-      .from('user_friends')
-      .insert({
-        user_id: user.id,
-        friend_id: friendId,
-        status: 'pending'
-      });
+    try {
+      const { error } = await supabase
+        .from('user_friends')
+        .insert([
+          {
+            user_id: user.id,
+            friend_id: friendId,
+            status: 'pending'
+          }
+        ]);
 
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to send friend request",
-        variant: "destructive"
-      });
-    } else {
+      if (error) {
+        console.error('Error sending friend request:', error);
+        toast({
+          title: "Error",
+          description: "Failed to send friend request",
+          variant: "destructive"
+        });
+        return;
+      }
+
       toast({
         title: "Success",
         description: "Friend request sent!"
       });
+      setSearchQuery('');
       setSearchResults([]);
-      setSearchFriend('');
+    } catch (error) {
+      console.error('Error sending friend request:', error);
+      toast({
+        title: "Error", 
+        description: "Failed to send friend request",
+        variant: "destructive"
+      });
     }
   };
 
-  const acceptFriendRequest = async (requestId: string) => {
-    const { error } = await supabase
-      .from('user_friends')
-      .update({ status: 'accepted' })
-      .eq('id', requestId);
+  const respondToFriendRequest = async (requestId: string, response: 'accepted' | 'declined') => {
+    try {
+      const { error } = await supabase
+        .from('user_friends')
+        .update({ status: response })
+        .eq('id', requestId);
 
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to accept friend request",
-        variant: "destructive"
-      });
-    } else {
+      if (error) {
+        console.error('Error responding to friend request:', error);
+        toast({
+          title: "Error",
+          description: "Failed to respond to friend request", 
+          variant: "destructive"
+        });
+        return;
+      }
+
       toast({
         title: "Success",
-        description: "Friend request accepted!"
+        description: `Friend request ${response}!`
       });
-      fetchFriends();
       fetchFriendRequests();
+      if (response === 'accepted') {
+        fetchFriends();
+      }
+    } catch (error) {
+      console.error('Error responding to friend request:', error);
+      toast({
+        title: "Error",
+        description: "Failed to respond to friend request",
+        variant: "destructive"
+      });
     }
   };
 
@@ -498,335 +559,328 @@ export default function Profile() {
                   </DialogContent>
                 </Dialog>
               </div>
-              
-              {/* Skills */}
+
+              {/* Skills display */}
               {profile?.skills && profile.skills.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium mb-2">Skills & Interests</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {profile.skills.map((skill) => (
-                      <Badge key={skill} variant="secondary">
-                        {skill}
-                      </Badge>
-                    ))}
-                  </div>
+                <div className="flex flex-wrap gap-2">
+                  {profile.skills.map((skill) => (
+                    <Badge key={skill} variant="secondary">
+                      {skill}
+                    </Badge>
+                  ))}
                 </div>
               )}
+
+              {/* Level and Points */}
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Crown className="h-5 w-5 text-primary" />
+                  <span className="text-sm">Level {profile?.level || 1}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-5 w-5 text-primary" />
+                  <span className="text-sm">{profile?.total_points || 0} Points</span>
+                </div>
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="overview" className="space-y-6">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="flex items-center justify-center mb-2">
+              <CheckCircle className="h-6 w-6 text-green-600" />
+            </div>
+            <div className="text-2xl font-bold">{stats.completed}</div>
+            <div className="text-sm text-muted-foreground">Completed</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="flex items-center justify-center mb-2">
+              <TrendingUp className="h-6 w-6 text-blue-600" />
+            </div>
+            <div className="text-2xl font-bold">{stats.inProgress}</div>
+            <div className="text-sm text-muted-foreground">In Progress</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="flex items-center justify-center mb-2">
+              <Target className="h-6 w-6 text-orange-600" />
+            </div>
+            <div className="text-2xl font-bold">{badges.length}</div>
+            <div className="text-sm text-muted-foreground">Badges</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="flex items-center justify-center mb-2">
+              <Users className="h-6 w-6 text-purple-600" />
+            </div>
+            <div className="text-2xl font-bold">{friends.length}</div>
+            <div className="text-sm text-muted-foreground">Friends</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tabs for different sections */}
+      <Tabs defaultValue="progress" className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="challenges">Challenges</TabsTrigger>
-          <TabsTrigger value="achievements">Achievements</TabsTrigger>
+          <TabsTrigger value="progress">Progress</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
+          <TabsTrigger value="badges">Badges</TabsTrigger>
           <TabsTrigger value="friends">Friends</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-4 text-center">
-                <Trophy className="h-8 w-8 text-primary mx-auto mb-2" />
-                <div className="text-2xl font-bold text-primary">{stats.completed}</div>
-                <div className="text-sm text-muted-foreground">Completed</div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-4 text-center">
-                <Target className="h-8 w-8 text-accent mx-auto mb-2" />
-                <div className="text-2xl font-bold text-accent">{stats.inProgress}</div>
-                <div className="text-sm text-muted-foreground">In Progress</div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-4 text-center">
-                <Star className="h-8 w-8 text-secondary mx-auto mb-2" />
-                <div className="text-2xl font-bold text-secondary">{profile?.total_points || 0}</div>
-                <div className="text-sm text-muted-foreground">Points</div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-4 text-center">
-                <Medal className="h-8 w-8 text-success mx-auto mb-2" />
-                <div className="text-2xl font-bold text-success">{profile?.level || 1}</div>
-                <div className="text-sm text-muted-foreground">Level</div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Progress Goals */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Weekly Goal
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>{stats.weeklyProgress} / {stats.weeklyGoal} challenges</span>
-                    <span>{Math.round((stats.weeklyProgress / stats.weeklyGoal) * 100)}%</span>
-                  </div>
-                  <Progress value={(stats.weeklyProgress / stats.weeklyGoal) * 100} />
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Monthly Goal
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>{stats.monthlyProgress} / {stats.monthlyGoal} challenges</span>
-                    <span>{Math.round((stats.monthlyProgress / stats.monthlyGoal) * 100)}%</span>
-                  </div>
-                  <Progress value={(stats.monthlyProgress / stats.monthlyGoal) * 100} />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="challenges" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Challenge History</CardTitle>
-              <CardDescription>Your recently completed challenges with proof submissions</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {completedChallenges.length > 0 ? (
-                <div className="space-y-4">
-                  {completedChallenges.map((challenge) => (
-                    <div key={challenge.id} className="border rounded-lg p-4">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl">
-                            {challenge.challenges.challenge_categories?.icon || '🎯'}
-                          </span>
-                          <div>
-                            <h4 className="font-medium">{challenge.challenges.title}</h4>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <span>Completed {new Date(challenge.completed_at).toLocaleDateString()}</span>
-                              <Badge variant="success">+{challenge.challenges.points_reward} pts</Badge>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {challenge.proof_text && (
-                        <p className="text-sm text-muted-foreground mb-2">{challenge.proof_text}</p>
-                      )}
-                      
-                      {challenge.proof_image_url && (
-                        <div className="mt-2">
-                          <img
-                            src={challenge.proof_image_url}
-                            alt="Challenge proof"
-                            className="rounded-lg max-h-48 object-cover"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Trophy className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No completed challenges yet</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="achievements" className="space-y-6">
+        <TabsContent value="progress" className="space-y-6">
+          {/* Weekly Progress */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Award className="h-5 w-5" />
-                Your Badges ({badges.length})
+                <Calendar className="h-5 w-5" />
+                Weekly Progress
               </CardTitle>
+              <CardDescription>
+                Complete {stats.weeklyGoal} challenges this week
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              {badges.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {badges.map((badge) => (
-                    <div 
-                      key={badge.id}
-                      className="flex items-center gap-3 p-4 bg-success/10 border border-success/20 rounded-lg"
-                    >
-                      <div className="text-2xl">{badge.icon}</div>
-                      <div>
-                        <p className="font-semibold">{badge.name}</p>
-                        <p className="text-sm text-muted-foreground">{badge.description}</p>
-                        {badge.earned_at && (
-                          <p className="text-xs text-success">
-                            Earned {new Date(badge.earned_at).toLocaleDateString()}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>{stats.weeklyProgress} / {stats.weeklyGoal} completed</span>
+                  <span>{Math.round((stats.weeklyProgress / stats.weeklyGoal) * 100)}%</span>
                 </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Award className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No badges earned yet</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Complete challenges to earn your first badge!
-                  </p>
+                <Progress value={(stats.weeklyProgress / stats.weeklyGoal) * 100} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Monthly Progress */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Monthly Progress
+              </CardTitle>
+              <CardDescription>
+                Complete {stats.monthlyGoal} challenges this month
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>{stats.monthlyProgress} / {stats.monthlyGoal} completed</span>
+                  <span>{Math.round((stats.monthlyProgress / stats.monthlyGoal) * 100)}%</span>
                 </div>
-              )}
+                <Progress value={(stats.monthlyProgress / stats.monthlyGoal) * 100} />
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="friends" className="space-y-6">
-          {/* Friend Requests */}
-          {friendRequests.length > 0 && (
+        <TabsContent value="history">
+          <Card>
+            <CardHeader>
+              <CardTitle>Challenge History</CardTitle>
+              <CardDescription>Your recently completed challenges</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {completedChallenges.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    No completed challenges yet. Start your first challenge!
+                  </p>
+                ) : (
+                  completedChallenges.map((challenge) => (
+                    <div key={challenge.id} className="flex items-start gap-4 p-4 border rounded-lg">
+                      <div className="text-2xl">
+                        {challenge.challenges.challenge_categories?.icon || '🎯'}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold">{challenge.challenges.title}</h3>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {challenge.challenges.description}
+                        </p>
+                        {challenge.proof_text && (
+                          <p className="text-sm italic mb-2">"{challenge.proof_text}"</p>
+                        )}
+                        {challenge.proof_image_url && (
+                          <img 
+                            src={challenge.proof_image_url} 
+                            alt="Challenge proof" 
+                            className="max-w-sm max-h-32 object-cover rounded"
+                          />
+                        )}
+                        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                          <span>Completed: {new Date(challenge.completed_at).toLocaleDateString()}</span>
+                          <span>+{challenge.challenges.points_reward} points</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="badges">
+          <Card>
+            <CardHeader>
+              <CardTitle>Earned Badges</CardTitle>
+              <CardDescription>Badges you've unlocked through challenges</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {badges.length === 0 ? (
+                  <div className="col-span-full text-center text-muted-foreground py-8">
+                    No badges earned yet. Complete challenges to earn badges!
+                  </div>
+                ) : (
+                  badges.map((badge) => (
+                    <div key={badge.id} className="text-center p-4 border rounded-lg">
+                      <div className="text-3xl mb-2">{badge.icon}</div>
+                      <h3 className="font-semibold text-sm">{badge.name}</h3>
+                      <p className="text-xs text-muted-foreground mt-1">{badge.description}</p>
+                      {badge.earned_at && (
+                        <p className="text-xs text-green-600 mt-2">
+                          Earned {new Date(badge.earned_at).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="friends">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Add Friends */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <UserPlus className="h-5 w-5" />
-                  Friend Requests ({friendRequests.length})
+                  Add Friends
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Search by username or name..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && searchFriends()}
+                  />
+                  <Button onClick={searchFriends}>
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {searchResults.length > 0 && (
+                  <div className="space-y-2">
+                    {searchResults.map((result) => (
+                      <div key={result.id} className="flex items-center justify-between p-2 border rounded">
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={result.avatar_url || undefined} />
+                            <AvatarFallback>{result.display_name?.charAt(0) || result.username?.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-sm font-medium">{result.display_name || result.username}</p>
+                            <p className="text-xs text-muted-foreground">@{result.username}</p>
+                          </div>
+                        </div>
+                        <Button size="sm" onClick={() => sendFriendRequest(result.user_id)}>
+                          Add
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Friend Requests */}
+                {friendRequests.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="font-medium">Friend Requests</h4>
+                    {friendRequests.map((request) => (
+                      <div key={request.id} className="flex items-center justify-between p-2 border rounded">
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={request.profiles?.avatar_url || undefined} />
+                            <AvatarFallback>
+                              {request.profiles?.display_name?.charAt(0) || request.profiles?.username?.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-sm font-medium">
+                              {request.profiles?.display_name || request.profiles?.username}
+                            </p>
+                            <p className="text-xs text-muted-foreground">@{request.profiles?.username}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button size="sm" onClick={() => respondToFriendRequest(request.id, 'accepted')}>
+                            Accept
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => respondToFriendRequest(request.id, 'declined')}>
+                            Decline
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Friends List */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Friends ({friends.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {friendRequests.map((request) => (
-                    <div key={request.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarImage src={request.profiles.avatar_url || undefined} />
+                <div className="space-y-2">
+                  {friends.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">
+                      No friends yet. Search and add some friends!
+                    </p>
+                  ) : (
+                    friends.map((friend) => (
+                      <div key={friend.id} className="flex items-center gap-2 p-2 border rounded">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={friend.profiles?.avatar_url || undefined} />
                           <AvatarFallback>
-                            {request.profiles.display_name?.charAt(0) || request.profiles.username?.charAt(0) || 'U'}
+                            {friend.profiles?.display_name?.charAt(0) || friend.profiles?.username?.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
-                        <div>
-                          <p className="font-medium">{request.profiles.display_name || request.profiles.username}</p>
-                          <p className="text-sm text-muted-foreground">Level {request.profiles.level}</p>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">
+                            {friend.profiles?.display_name || friend.profiles?.username}
+                          </p>
+                          <p className="text-xs text-muted-foreground">@{friend.profiles?.username}</p>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Level {friend.profiles?.level || 1}
                         </div>
                       </div>
-                      <Button size="sm" onClick={() => acceptFriendRequest(request.id)}>
-                        Accept
-                      </Button>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
-          )}
-
-          {/* Add Friends */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Search className="h-5 w-5" />
-                Find Friends
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-2 mb-4">
-                <Input
-                  placeholder="Search by username or display name..."
-                  value={searchFriend}
-                  onChange={(e) => setSearchFriend(e.target.value)}
-                />
-                <Button onClick={searchFriends}>
-                  <Search className="h-4 w-4" />
-                </Button>
-              </div>
-              
-              {searchResults.length > 0 && (
-                <div className="space-y-3">
-                  {searchResults.map((user) => (
-                    <div key={user.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarImage src={user.avatar_url || undefined} />
-                          <AvatarFallback>
-                            {user.display_name?.charAt(0) || user.username?.charAt(0) || 'U'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{user.display_name || user.username}</p>
-                          <p className="text-sm text-muted-foreground">Level {user.level} • {user.total_points} pts</p>
-                        </div>
-                      </div>
-                      <Button size="sm" onClick={() => sendFriendRequest(user.user_id)}>
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Add Friend
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Friends List */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Your Friends ({friends.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {friends.length > 0 ? (
-                <div className="space-y-3">
-                  {friends.map((friend) => (
-                    <div key={friend.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarImage src={friend.profiles.avatar_url || undefined} />
-                          <AvatarFallback>
-                            {friend.profiles.display_name?.charAt(0) || friend.profiles.username?.charAt(0) || 'U'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{friend.profiles.display_name || friend.profiles.username}</p>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <span>Level {friend.profiles.level}</span>
-                            <span>•</span>
-                            <span>{friend.profiles.total_points} points</span>
-                            {friend.profiles.level >= 10 && (
-                              <Crown className="h-4 w-4 text-yellow-500" />
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <Button variant="outline" size="sm">
-                        View Profile
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No friends yet</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Search for users above to add friends!
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
