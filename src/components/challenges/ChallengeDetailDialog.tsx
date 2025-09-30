@@ -146,14 +146,50 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
     
     setIsSubmitting(true);
     try {
-      // Update user challenge with proof and mark as completed
+      let proofImageUrl = null;
+      let proofVideoUrl = null;
+
+      // Upload proof image if provided
+      if (submissionImage) {
+        const imageFileName = `${user.id}/${userChallenge.id}/${Date.now()}-${submissionImage.name}`;
+        const { data: imageData, error: imageError } = await supabase.storage
+          .from('user-uploads')
+          .upload(imageFileName, submissionImage);
+
+        if (imageError) throw imageError;
+        
+        const { data: imageUrlData } = supabase.storage
+          .from('user-uploads')
+          .getPublicUrl(imageFileName);
+        
+        proofImageUrl = imageUrlData.publicUrl;
+      }
+
+      // Upload proof video if provided
+      if (submissionVideo) {
+        const videoFileName = `${user.id}/${userChallenge.id}/${Date.now()}-${submissionVideo.name}`;
+        const { data: videoData, error: videoError } = await supabase.storage
+          .from('user-uploads')
+          .upload(videoFileName, submissionVideo);
+
+        if (videoError) throw videoError;
+        
+        const { data: videoUrlData } = supabase.storage
+          .from('user-uploads')
+          .getPublicUrl(videoFileName);
+        
+        proofVideoUrl = videoUrlData.publicUrl;
+      }
+
+      // Update user challenge with proof and set to pending validation
       const { error: challengeError } = await supabase
         .from('user_challenges')
         .update({
-          status: 'completed',
           completed_at: new Date().toISOString(),
           proof_text: submissionText,
-          proof_image_url: submissionImage ? 'placeholder-url' : null // Handle image upload separately
+          proof_image_url: proofImageUrl,
+          proof_video_url: proofVideoUrl,
+          validation_status: 'pending'
         })
         .eq('id', userChallenge.id);
 
@@ -164,16 +200,28 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
         user_id: user.id,
         user_challenge_id: userChallenge.id,
         content: submissionText,
-        hashtags: [`#${challenge.challenge_categories?.name?.toLowerCase()}`]
+        hashtags: [`#${challenge.challenge_categories?.name?.toLowerCase()}`],
+        image_url: proofImageUrl
       }]);
 
       if (postError) throw postError;
 
+      // Notify validators about new submission
+      const { error: notificationError } = await supabase
+        .from('validator_notifications')
+        .insert([{
+          user_challenge_id: userChallenge.id,
+          validator_id: challenge.created_by || '', // Notify challenge creator
+          type: 'new_submission'
+        }]);
+
+      if (notificationError) console.warn('Failed to create validator notification:', notificationError);
+
       onStatusUpdate();
       onClose();
       toast({
-        title: "Challenge Completed!",
-        description: `Congratulations! You earned ${challenge.points_reward} points`,
+        title: "Submission Pending Validation",
+        description: "Your proof has been submitted and is awaiting validation by eligible reviewers.",
       });
     } catch (error) {
       console.error('Error submitting proof:', error);

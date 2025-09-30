@@ -70,17 +70,37 @@ export function ValidationCard({
     
     setIsApproving(true);
     try {
-      // Update user challenge status
+      // Update user challenge status to approved and completed
       const { error: updateError } = await supabase
         .from('user_challenges')
         .update({
           validation_status: 'approved',
           validated_by: currentUserId,
-          validated_at: new Date().toISOString()
+          validated_at: new Date().toISOString(),
+          status: 'completed'
         })
         .eq('id', userChallenge.id);
 
       if (updateError) throw updateError;
+
+      // Award points to the submitter
+      const challengePoints = userChallenge.challenges.points_reward || 10;
+      
+      const { data: submitterProfile } = await supabase
+        .from('profiles')
+        .select('total_points')
+        .eq('user_id', userChallenge.user_id)
+        .single();
+      
+      const submitterCurrentPoints = submitterProfile?.total_points || 0;
+      const { error: submitterPointsError } = await supabase
+        .from('profiles')
+        .update({ 
+          total_points: submitterCurrentPoints + challengePoints
+        })
+        .eq('user_id', userChallenge.user_id);
+
+      if (submitterPointsError) console.warn('Failed to award submitter points:', submitterPointsError);
 
       // Log the validation action
       const { error: auditError } = await supabase
@@ -120,9 +140,20 @@ export function ValidationCard({
 
       if (pointsError) console.warn('Failed to award validator points:', pointsError);
 
+      // Notify submitter of approval
+      const { error: notificationError } = await supabase
+        .from('validator_notifications')
+        .insert([{
+          user_challenge_id: userChallenge.id,
+          validator_id: userChallenge.user_id,
+          type: 'submission_approved'
+        }]);
+
+      if (notificationError) console.warn('Failed to create approval notification:', notificationError);
+
       toast({
         title: "Submission approved",
-        description: `You've successfully approved this submission and earned ${validatorPoints} points.`,
+        description: `You've approved this submission. The user earned ${challengePoints} points and you earned ${validatorPoints} points.`,
       });
 
       setShowApproveDialog(false);
@@ -170,6 +201,17 @@ export function ValidationCard({
         });
 
       if (auditError) throw auditError;
+
+      // Notify submitter of rejection
+      const { error: notificationError } = await supabase
+        .from('validator_notifications')
+        .insert([{
+          user_challenge_id: userChallenge.id,
+          validator_id: userChallenge.user_id,
+          type: 'submission_rejected'
+        }]);
+
+      if (notificationError) console.warn('Failed to create rejection notification:', notificationError);
 
       toast({
         title: "Submission rejected",
