@@ -527,13 +527,6 @@ export type Database = {
             referencedRelation: "challenges"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "submissions_user_id_fkey_profiles"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
         ]
       }
       user_badges: {

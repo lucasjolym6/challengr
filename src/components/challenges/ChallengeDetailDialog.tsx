@@ -327,11 +327,11 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
         description: "Your submission has been sent to the challenge creator for review. You'll be notified once it's validated.",
       });
       // Don't close the dialog - user stays to see their submission status
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting proof:', error);
       toast({
         title: "Error",
-        description: "Failed to submit proof",
+        description: error?.message || "Failed to submit proof",
         variant: "destructive",
       });
     } finally {
