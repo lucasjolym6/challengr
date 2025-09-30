@@ -11,10 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { Plus, Filter, Grid3X3, List, Users, User, Play, CheckCircle, Trophy, MessageSquare } from "lucide-react";
+import { Plus, Filter, Grid3X3, List, Users, Play, CheckCircle } from "lucide-react";
 import ChallengeDetailDialog from "@/components/challenges/ChallengeDetailDialog";
-import ChallengeFeed from "@/components/challenges/ChallengeFeed";
-import CommunityStats from "@/components/challenges/CommunityStats";
 import { CreateChallengeDialog } from "@/components/challenges/CreateChallengeDialog";
 
 interface Challenge {
@@ -60,7 +58,7 @@ const Challenges = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
-  const [activeTab, setActiveTab] = useState<'challenges' | 'feed' | 'community'>('challenges');
+  
   const [loading, setLoading] = useState(true);
 
   // Form state for creating custom challenges
@@ -444,95 +442,67 @@ const Challenges = () => {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="challenges" className="gap-2">
-            <User className="w-4 h-4" />
-            Challenges
-          </TabsTrigger>
-          <TabsTrigger value="feed" className="gap-2">
-            <MessageSquare className="w-4 h-4" />
-            Community Feed
-          </TabsTrigger>
-          <TabsTrigger value="community" className="gap-2">
-            <Trophy className="w-4 h-4" />
-            Leaderboard
-          </TabsTrigger>
-        </TabsList>
+      {/* Filters and View Toggle */}
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4" />
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category.id} value={category.name}>
+                  {category.icon} {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="flex items-center gap-1 ml-auto">
+          <Button
+            variant={viewMode === 'grid' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('grid')}
+          >
+            <Grid3X3 className="w-4 h-4" />
+          </Button>
+          <Button
+            variant={viewMode === 'list' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('list')}
+          >
+            <List className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
 
-        <TabsContent value="challenges" className="space-y-6">
-          {/* Filters and View Toggle */}
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4" />
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.name}>
-                      {category.icon} {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="flex items-center gap-1 ml-auto">
-              <Button
-                variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('grid')}
-              >
-                <Grid3X3 className="w-4 h-4" />
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-              >
-                <List className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
+      {/* Challenges Grid/List */}
+      <div className={viewMode === 'grid' 
+        ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
+        : "space-y-4"
+      }>
+        {filteredChallenges.map(renderChallengeCard)}
+      </div>
 
-          {/* Challenges Grid/List */}
-          <div className={viewMode === 'grid' 
-            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
-            : "space-y-4"
-          }>
-            {filteredChallenges.map(renderChallengeCard)}
-          </div>
-
-          {filteredChallenges.length === 0 && (
-            <div className="text-center py-12">
-              <div className="text-4xl mb-4">🎯</div>
-              <h3 className="text-xl font-semibold mb-2">No challenges found</h3>
-              <p className="text-muted-foreground mb-4">
-                {selectedCategory === 'all' 
-                  ? "No challenges available yet" 
-                  : `No challenges found in ${selectedCategory} category`
-                }
-              </p>
-              <Button onClick={() => setShowCreateDialog(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Create the first challenge
-              </Button>
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="feed">
-          <ChallengeFeed />
-        </TabsContent>
-
-        <TabsContent value="community">
-          <CommunityStats />
-        </TabsContent>
-      </Tabs>
+      {filteredChallenges.length === 0 && (
+        <div className="text-center py-12">
+          <div className="text-4xl mb-4">🎯</div>
+          <h3 className="text-xl font-semibold mb-2">No challenges found</h3>
+          <p className="text-muted-foreground mb-4">
+            {selectedCategory === 'all' 
+              ? "No challenges available yet" 
+              : `No challenges found in ${selectedCategory} category`
+            }
+          </p>
+          <Button onClick={() => setShowCreateDialog(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Create the first challenge
+          </Button>
+        </div>
+      )}
 
       {/* Challenge Detail Dialog */}
       <ChallengeDetailDialog

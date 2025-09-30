@@ -7,6 +7,7 @@ import { AuthProvider } from "@/components/auth/AuthProvider";
 import { Layout } from "@/components/layout/Layout";
 import Home from "./pages/Home";
 import Challenges from "./pages/Challenges";
+import Community from "./pages/Community";
 import Profile from "./pages/Profile";
 import ValidationQueue from "./pages/ValidationQueue";
 import NotFound from "./pages/NotFound";
@@ -22,7 +23,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/challenges" element={<Challenges />} />
-              <Route path="/community" element={<div className="p-8 text-center">Community page coming soon! 👥</div>} />
+              <Route path="/community" element={<Community />} />
               <Route path="/validation" element={<ValidationQueue />} />
               <Route path="/profile" element={<Profile />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
