@@ -322,11 +322,11 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
       setUserSubmission(submissionData as Submission);
 
       onStatusUpdate();
-      onClose();
       toast({
-        title: "Submission Pending Validation",
-        description: "Your proof has been submitted and is awaiting validation by the challenge creator or qualified validators.",
+        title: "Submission Sent!",
+        description: "Your submission has been sent to the challenge creator for review. You'll be notified once it's validated.",
       });
+      // Don't close the dialog - user stays to see their submission status
     } catch (error) {
       console.error('Error submitting proof:', error);
       toast({
