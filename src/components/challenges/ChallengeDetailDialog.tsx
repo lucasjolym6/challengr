@@ -32,10 +32,22 @@ interface UserChallenge {
   challenge_id: string;
   started_at: string | null;
   completed_at: string | null;
-  validation_status?: string;
+}
+
+interface Submission {
+  id: string;
+  challenge_id: string;
+  user_id: string;
+  status: 'pending' | 'approved' | 'rejected';
   proof_text?: string;
   proof_image_url?: string;
   proof_video_url?: string;
+  validator_id?: string;
+  validator_comment?: string;
+  rejection_reason?: string;
+  created_at: string;
+  updated_at: string;
+  validated_at?: string;
 }
 
 interface ChallengeDetailDialogProps {
@@ -60,27 +72,61 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
   const [submissionVideo, setSubmissionVideo] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [canValidate, setCanValidate] = useState(false);
-  const [pendingValidations, setPendingValidations] = useState<UserChallenge[]>([]);
+  const [pendingValidations, setPendingValidations] = useState<Submission[]>([]);
+  const [userSubmission, setUserSubmission] = useState<Submission | null>(null);
 
   useEffect(() => {
     if (user && challenge && isOpen) {
       checkCanValidate();
       fetchPendingValidations();
+      fetchUserSubmission();
     }
   }, [user, challenge, isOpen]);
+
+  const fetchUserSubmission = async () => {
+    if (!user || !challenge) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('submissions')
+        .select('*')
+        .eq('challenge_id', challenge.id)
+        .eq('user_id', user.id)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows found
+      setUserSubmission(data as Submission | null);
+    } catch (error) {
+      console.error('Error fetching user submission:', error);
+      setUserSubmission(null);
+    }
+  };
 
   const checkCanValidate = async () => {
     if (!user || !challenge) return;
     
     try {
-      const { data, error } = await supabase.rpc('can_validate_challenge', {
-        validator_user_id: user.id,
-        challenge_id_param: challenge.id,
-        submission_user_id: 'dummy-user-id' // We'll check this for each individual submission
-      });
+      // For now, just check if user is challenge creator or has approved submissions
+      const { data: creatorCheck } = await supabase
+        .from('challenges')
+        .select('created_by')
+        .eq('id', challenge.id)
+        .eq('created_by', user.id)
+        .single();
       
-      if (error) throw error;
-      setCanValidate(data || false);
+      if (creatorCheck) {
+        setCanValidate(true);
+        return;
+      }
+
+      const { data: approvedSubmissions } = await supabase
+        .from('submissions')
+        .select('id')
+        .eq('challenge_id', challenge.id)
+        .eq('user_id', user.id)
+        .eq('status', 'approved');
+      
+      setCanValidate(approvedSubmissions && approvedSubmissions.length > 0);
     } catch (error) {
       console.error('Error checking validation capability:', error);
       setCanValidate(false);
@@ -92,21 +138,26 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
     
     try {
       const { data, error } = await supabase
-        .from('user_challenges')
+        .from('submissions')
         .select(`
           *,
           profiles (
             username,
             display_name,
             avatar_url
+          ),
+          challenges (
+            title,
+            description,
+            points_reward
           )
         `)
         .eq('challenge_id', challenge.id)
-        .eq('validation_status', 'pending')
+        .eq('status', 'pending')
         .neq('user_id', user.id);
       
       if (error) throw error;
-      setPendingValidations(data || []);
+      setPendingValidations(data as Submission[] || []);
     } catch (error) {
       console.error('Error fetching pending validations:', error);
       setPendingValidations([]);
@@ -116,15 +167,23 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
   if (!challenge) return null;
 
   const status = userChallenge?.status || 'to_do';
-  const validationStatus = userChallenge?.validation_status;
   
-  // Determine the actual display status
+  // Determine the actual display status based on submission state
   const getDisplayStatus = () => {
     if (!userChallenge) return 'to_do';
-    if (status === 'completed' && validationStatus === 'approved') return 'completed';
-    if (status === 'in_progress' && validationStatus === 'pending') return 'pending_validation';
-    if (validationStatus === 'rejected') return 'rejected';
-    return status;
+    if (!userSubmission) return status; // No submission yet, use challenge status
+    
+    // Use submission status to determine display
+    switch (userSubmission.status) {
+      case 'pending':
+        return 'pending_validation';
+      case 'approved':
+        return 'completed';
+      case 'rejected':
+        return 'rejected';
+      default:
+        return status;
+    }
   };
   
   const displayStatus = getDisplayStatus();
@@ -167,7 +226,7 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
 
       // Upload proof image if provided
       if (submissionImage) {
-        const imageFileName = `${user.id}/${userChallenge.id}/${Date.now()}-${submissionImage.name}`;
+        const imageFileName = `${user.id}/${challenge.id}/${Date.now()}-${submissionImage.name}`;
         const { data: imageData, error: imageError } = await supabase.storage
           .from('user-uploads')
           .upload(imageFileName, submissionImage);
@@ -183,7 +242,7 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
 
       // Upload proof video if provided
       if (submissionVideo) {
-        const videoFileName = `${user.id}/${userChallenge.id}/${Date.now()}-${submissionVideo.name}`;
+        const videoFileName = `${user.id}/${challenge.id}/${Date.now()}-${submissionVideo.name}`;
         const { data: videoData, error: videoError } = await supabase.storage
           .from('user-uploads')
           .upload(videoFileName, submissionVideo);
@@ -197,20 +256,21 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
         proofVideoUrl = videoUrlData.publicUrl;
       }
 
-      // Update user challenge with proof but keep status as in_progress, set validation_status to pending
-      const { error: challengeError } = await supabase
-        .from('user_challenges')
-        .update({
-          completed_at: new Date().toISOString(),
+      // Create submission record
+      const { data: submissionData, error: submissionError } = await supabase
+        .from('submissions')
+        .insert({
+          challenge_id: challenge.id,
+          user_id: user.id,
+          status: 'pending',
           proof_text: submissionText,
           proof_image_url: proofImageUrl,
-          proof_video_url: proofVideoUrl,
-          validation_status: 'pending'
-          // Note: status remains 'in_progress' until validation is approved
+          proof_video_url: proofVideoUrl
         })
-        .eq('id', userChallenge.id);
+        .select()
+        .single();
 
-      if (challengeError) throw challengeError;
+      if (submissionError) throw submissionError;
 
       // Create a post for the community feed
       const { error: postError } = await supabase.from('posts').insert([{
@@ -228,34 +288,38 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
         const { error: notificationError } = await supabase
           .from('validator_notifications')
           .insert([{
-            user_challenge_id: userChallenge.id,
+            submission_id: submissionData.id,
             validator_id: challenge.created_by,
-            type: 'new_submission'
+            type: 'new_submission',
+            user_challenge_id: userChallenge.id // Still needed for backward compatibility
           }]);
 
         if (notificationError) console.warn('Failed to create validator notification:', notificationError);
       }
 
-      // Also notify other eligible validators (users who have completed this challenge)
+      // Also notify other eligible validators (users who have approved submissions for this challenge)
       const { data: eligibleValidators, error: validatorsError } = await supabase
-        .from('user_challenges')
+        .from('submissions')
         .select('user_id')
         .eq('challenge_id', challenge.id)
-        .eq('status', 'completed')
-        .eq('validation_status', 'approved')
-        .neq('user_id', user.id); // Exclude current user
+        .eq('status', 'approved')
+        .neq('user_id', user.id);
 
       if (!validatorsError && eligibleValidators) {
         for (const validator of eligibleValidators) {
           await supabase
             .from('validator_notifications')
             .insert([{
-              user_challenge_id: userChallenge.id,
+              submission_id: submissionData.id,
               validator_id: validator.user_id,
-              type: 'new_submission'
+              type: 'new_submission',
+              user_challenge_id: userChallenge.id
             }]);
         }
       }
+
+      // Update the user submission state
+      setUserSubmission(submissionData as Submission);
 
       onStatusUpdate();
       onClose();
@@ -419,10 +483,10 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
               <p className="text-muted-foreground mb-4">
                 Your submission has been received and is awaiting validation by the challenge creator or qualified validators.
               </p>
-              {userChallenge?.proof_text && (
+              {userSubmission?.proof_text && (
                 <div className="text-left bg-white p-3 rounded-lg mb-4">
                   <h4 className="font-medium mb-2">Your Submission:</h4>
-                  <p className="text-sm text-muted-foreground">{userChallenge.proof_text}</p>
+                  <p className="text-sm text-muted-foreground">{userSubmission.proof_text}</p>
                 </div>
               )}
             </div>

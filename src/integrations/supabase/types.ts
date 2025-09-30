@@ -333,6 +333,7 @@ export type Database = {
           reviewed_at: string | null
           reviewed_by: string | null
           status: string
+          submission_id: string | null
           user_challenge_id: string
         }
         Insert: {
@@ -344,6 +345,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
+          submission_id?: string | null
           user_challenge_id: string
         }
         Update: {
@@ -355,14 +357,71 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
+          submission_id?: string | null
           user_challenge_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "submission_reports_user_challenge_id_fkey"
-            columns: ["user_challenge_id"]
+            foreignKeyName: "submission_reports_submission_id_fkey"
+            columns: ["submission_id"]
             isOneToOne: false
-            referencedRelation: "user_challenges"
+            referencedRelation: "submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      submissions: {
+        Row: {
+          challenge_id: string
+          created_at: string
+          id: string
+          proof_image_url: string | null
+          proof_text: string | null
+          proof_video_url: string | null
+          rejection_reason: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          validated_at: string | null
+          validator_comment: string | null
+          validator_id: string | null
+        }
+        Insert: {
+          challenge_id: string
+          created_at?: string
+          id?: string
+          proof_image_url?: string | null
+          proof_text?: string | null
+          proof_video_url?: string | null
+          rejection_reason?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          validated_at?: string | null
+          validator_comment?: string | null
+          validator_id?: string | null
+        }
+        Update: {
+          challenge_id?: string
+          created_at?: string
+          id?: string
+          proof_image_url?: string | null
+          proof_text?: string | null
+          proof_video_url?: string | null
+          rejection_reason?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          validated_at?: string | null
+          validator_comment?: string | null
+          validator_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submissions_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
             referencedColumns: ["id"]
           },
         ]
@@ -513,6 +572,7 @@ export type Database = {
           id: string
           metadata: Json | null
           reason: string | null
+          submission_id: string | null
           user_challenge_id: string
           validator_id: string
         }
@@ -523,6 +583,7 @@ export type Database = {
           id?: string
           metadata?: Json | null
           reason?: string | null
+          submission_id?: string | null
           user_challenge_id: string
           validator_id: string
         }
@@ -533,15 +594,16 @@ export type Database = {
           id?: string
           metadata?: Json | null
           reason?: string | null
+          submission_id?: string | null
           user_challenge_id?: string
           validator_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "validation_audit_user_challenge_id_fkey"
-            columns: ["user_challenge_id"]
+            foreignKeyName: "validation_audit_submission_id_fkey"
+            columns: ["submission_id"]
             isOneToOne: false
-            referencedRelation: "user_challenges"
+            referencedRelation: "submissions"
             referencedColumns: ["id"]
           },
         ]
@@ -551,6 +613,7 @@ export type Database = {
           created_at: string
           id: string
           read_at: string | null
+          submission_id: string | null
           type: string
           user_challenge_id: string
           validator_id: string
@@ -559,6 +622,7 @@ export type Database = {
           created_at?: string
           id?: string
           read_at?: string | null
+          submission_id?: string | null
           type: string
           user_challenge_id: string
           validator_id: string
@@ -567,11 +631,19 @@ export type Database = {
           created_at?: string
           id?: string
           read_at?: string | null
+          submission_id?: string | null
           type?: string
           user_challenge_id?: string
           validator_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "validator_notifications_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "submissions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "validator_notifications_user_challenge_id_fkey"
             columns: ["user_challenge_id"]
@@ -592,6 +664,10 @@ export type Database = {
           submission_user_id: string
           validator_user_id: string
         }
+        Returns: boolean
+      }
+      can_validate_submission: {
+        Args: { submission_id_param: string; validator_user_id: string }
         Returns: boolean
       }
     }
