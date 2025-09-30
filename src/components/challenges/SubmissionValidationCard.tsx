@@ -1,492 +1,582 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CheckCircle, XCircle, AlertCircle, Clock, Flag } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { formatDistanceToNow } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { CheckCircle, XCircle, AlertTriangle, Video } from "lucide-react";
+
+interface Submission {
+  id: string;
+  proof_text?: string;
+  proof_image_url?: string;
+  proof_video_url?: string;
+  created_at: string;
+  status: string;
+  rejection_reason?: string;
+  validator_comment?: string;
+  user_id: string;
+  challenge_id: string;
+  challenges: {
+    title: string;
+    description?: string;
+    points_reward?: number;
+  };
+  profiles: {
+    username: string;
+    display_name?: string;
+    avatar_url?: string;
+  };
+}
 
 interface SubmissionValidationCardProps {
-  submission: {
-    id: string;
-    challenge_id: string;
-    user_id: string;
-    status: 'pending' | 'approved' | 'rejected';
-    proof_text?: string;
-    proof_image_url?: string;
-    proof_video_url?: string;
-    validator_id?: string;
-    validator_comment?: string;
-    rejection_reason?: string;
-    created_at: string;
-    updated_at: string;
-    validated_at?: string;
-    challenges: {
-      title: string;
-      description?: string;
-      points_reward?: number;
-    };
-    profiles: {
-      username: string;
-      display_name?: string;
-      avatar_url?: string;
-    };
-  };
+  submission: Submission;
   currentUserId: string;
   canValidate: boolean;
   onValidationComplete: () => void;
 }
 
 const REJECTION_REASONS = [
-  "No evidence provided",
-  "Evidence doesn't match challenge requirements",
+  "Does not meet challenge requirements",
+  "Insufficient proof provided",
+  "Appears to be fake or staged",
+  "Does not match challenge description",
   "Poor quality submission",
-  "Late submission (past deadline)",
-  "Inappropriate content",
-  "Duplicate submission",
   "Other"
 ];
 
-export function SubmissionValidationCard({ 
-  submission, 
-  currentUserId, 
-  canValidate, 
-  onValidationComplete 
+export function SubmissionValidationCard({
+  submission,
+  currentUserId,
+  canValidate,
+  onValidationComplete
 }: SubmissionValidationCardProps) {
   const { toast } = useToast();
-  const [isApproving, setIsApproving] = useState(false);
-  const [isRejecting, setIsRejecting] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState("");
-  const [comment, setComment] = useState("");
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [rejectionComment, setRejectionComment] = useState("");
   const [reportReason, setReportReason] = useState("");
   const [reportDescription, setReportDescription] = useState("");
+  const [validatorComment, setValidatorComment] = useState("");
 
   const handleApprove = async () => {
-    if (!canValidate) return;
-    
-    setIsApproving(true);
+    setLoading(true);
     try {
-      // Update submission status to approved
-      const { error: updateError } = await supabase
+      // Update submission status
+      const { error: submissionError } = await supabase
         .from('submissions')
         .update({
           status: 'approved',
           validator_id: currentUserId,
+          validator_comment: validatorComment,
           validated_at: new Date().toISOString(),
-          validator_comment: comment || null
+          updated_at: new Date().toISOString()
         })
         .eq('id', submission.id);
 
-      if (updateError) throw updateError;
+      if (submissionError) throw submissionError;
 
       // Award points to the submitter
-      const challengePoints = submission.challenges.points_reward || 10;
-      
-      const { data: submitterProfile } = await supabase
+      const { data: profile } = await supabase
         .from('profiles')
         .select('total_points')
         .eq('user_id', submission.user_id)
         .single();
-      
-      const submitterCurrentPoints = submitterProfile?.total_points || 0;
-      const { error: submitterPointsError } = await supabase
-        .from('profiles')
-        .update({ 
-          total_points: submitterCurrentPoints + challengePoints
-        })
-        .eq('user_id', submission.user_id);
 
-      if (submitterPointsError) console.warn('Failed to award submitter points:', submitterPointsError);
+      if (profile) {
+        await supabase
+          .from('profiles')
+          .update({
+            total_points: (profile.total_points || 0) + (submission.challenges.points_reward || 10)
+          })
+          .eq('user_id', submission.user_id);
+      }
 
-      // Update the user_challenge status to completed (if it exists)
-      const { error: challengeUpdateError } = await supabase
-        .from('user_challenges')
-        .update({
-          status: 'completed',
-          validation_status: 'approved'
-        })
-        .eq('user_id', submission.user_id)
-        .eq('challenge_id', submission.challenge_id);
-
-      if (challengeUpdateError) console.warn('Failed to update user challenge status:', challengeUpdateError);
-
-      // Log the validation action (keep using user_challenge_id for now)
-      const { error: auditError } = await supabase
-        .from('validation_audit')
-        .insert({
-          user_challenge_id: '', // This will need to be looked up from user_challenges table
-          validator_id: currentUserId,
-          action: 'approved',
-          comment: comment || null
-        });
-
-      if (auditError) throw auditError;
-
-      // Award points to validator
-      const { data: validatorConfig } = await supabase
-        .from('admin_config')
-        .select('value')
-        .eq('key', 'points_for_validator')
-        .single();
-
-      const validatorPoints = validatorConfig?.value ? parseInt(validatorConfig.value as string) : 5;
-      
-      // Update validator points directly
-      const { data: currentProfile } = await supabase
+      // Award validation points to the validator
+      const { data: validatorProfile } = await supabase
         .from('profiles')
         .select('total_points')
         .eq('user_id', currentUserId)
         .single();
-      
-      const currentPoints = currentProfile?.total_points || 0;
-      const { error: pointsError } = await supabase
-        .from('profiles')
-        .update({ 
-          total_points: currentPoints + validatorPoints
-        })
-        .eq('user_id', currentUserId);
 
-      if (pointsError) console.warn('Failed to award validator points:', pointsError);
+      if (validatorProfile) {
+        await supabase
+          .from('profiles')
+          .update({
+            total_points: (validatorProfile.total_points || 0) + 5 // Validator gets 5 points
+          })
+          .eq('user_id', currentUserId);
+      }
 
-      // Notify submitter of approval
-      const { error: notificationError } = await supabase
-        .from('validator_notifications')
+      // Update user_challenges to mark as completed
+      const { data: existingChallenge } = await supabase
+        .from('user_challenges')
+        .select('id')
+        .eq('user_id', submission.user_id)
+        .eq('challenge_id', submission.challenge_id)
+        .maybeSingle();
+
+      if (existingChallenge) {
+        await supabase
+          .from('user_challenges')
+          .update({
+            status: 'completed',
+            validation_status: 'approved',
+            completed_at: new Date().toISOString()
+          })
+          .eq('id', existingChallenge.id);
+      }
+
+      // Log validation action
+      await supabase
+        .from('validation_audit')
         .insert([{
           submission_id: submission.id,
-          validator_id: submission.user_id,
-          type: 'submission_approved',
-          user_challenge_id: '' // We'll need to look this up if needed
+          user_challenge_id: existingChallenge?.id || null,
+          validator_id: currentUserId,
+          action: 'approved',
+          comment: validatorComment
         }]);
-
-      if (notificationError) console.warn('Failed to create approval notification:', notificationError);
-
-      toast({
-        title: "Submission approved",
-        description: `You've approved this submission. The user earned ${challengePoints} points and you earned ${validatorPoints} points.`,
-      });
 
       setShowApproveDialog(false);
       onValidationComplete();
+      toast({
+        title: "Submission Approved",
+        description: `${submission.profiles.display_name || submission.profiles.username} earned ${submission.challenges.points_reward} points!`,
+      });
     } catch (error) {
       console.error('Error approving submission:', error);
       toast({
         title: "Error",
-        description: "Failed to approve submission. Please try again.",
+        description: "Failed to approve submission",
         variant: "destructive",
       });
     } finally {
-      setIsApproving(false);
+      setLoading(false);
     }
   };
 
   const handleReject = async () => {
-    if (!canValidate || !rejectionReason) return;
-    
-    setIsRejecting(true);
+    if (!rejectionReason) {
+      toast({
+        title: "Rejection reason required",
+        description: "Please select a reason for rejection",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
     try {
-      // Update submission status to rejected
-      const { error: updateError } = await supabase
+      // Update submission status
+      const { error: submissionError } = await supabase
         .from('submissions')
         .update({
           status: 'rejected',
           validator_id: currentUserId,
-          validated_at: new Date().toISOString(),
           rejection_reason: rejectionReason,
-          validator_comment: comment || null
+          validator_comment: rejectionComment,
+          validated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
         .eq('id', submission.id);
 
-      if (updateError) throw updateError;
+      if (submissionError) throw submissionError;
 
-      // Log the validation action (keep using user_challenge_id for now)
-      const { error: auditError } = await supabase
+      // Increment defeat counter
+      const { data: existingDefeat } = await supabase
+        .from('user_challenge_defeats')
+        .select('*')
+        .eq('user_id', submission.user_id)
+        .eq('challenge_id', submission.challenge_id)
+        .maybeSingle();
+
+      if (existingDefeat) {
+        await supabase
+          .from('user_challenge_defeats')
+          .update({
+            defeats_count: existingDefeat.defeats_count + 1,
+            last_defeated_at: new Date().toISOString()
+          })
+          .eq('id', existingDefeat.id);
+      } else {
+        await supabase
+          .from('user_challenge_defeats')
+          .insert([{
+            user_id: submission.user_id,
+            challenge_id: submission.challenge_id,
+            defeats_count: 1,
+            last_defeated_at: new Date().toISOString()
+          }]);
+      }
+
+      // Increment total defeats in profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('total_defeats')
+        .eq('user_id', submission.user_id)
+        .maybeSingle();
+
+      if (profile) {
+        await supabase
+          .from('profiles')
+          .update({
+            total_defeats: (profile.total_defeats || 0) + 1
+          })
+          .eq('user_id', submission.user_id);
+      }
+
+      // Log validation action
+      const { data: existingChallenge } = await supabase
+        .from('user_challenges')
+        .select('id')
+        .eq('user_id', submission.user_id)
+        .eq('challenge_id', submission.challenge_id)
+        .maybeSingle();
+
+      await supabase
         .from('validation_audit')
-        .insert({
-          user_challenge_id: '', // This will need to be looked up from user_challenges table
+        .insert([{
+          submission_id: submission.id,
+          user_challenge_id: existingChallenge?.id || null,
           validator_id: currentUserId,
           action: 'rejected',
           reason: rejectionReason,
-          comment: comment || null
-        });
-
-      if (auditError) throw auditError;
-
-      // Notify submitter of rejection
-      const { error: notificationError } = await supabase
-        .from('validator_notifications')
-        .insert([{
-          submission_id: submission.id,
-          validator_id: submission.user_id,
-          type: 'submission_rejected',
-          user_challenge_id: '' // We'll need to look this up if needed
+          comment: rejectionComment
         }]);
-
-      if (notificationError) console.warn('Failed to create rejection notification:', notificationError);
-
-      toast({
-        title: "Submission rejected",
-        description: "The submission has been rejected with feedback for the user.",
-      });
 
       setShowRejectDialog(false);
       onValidationComplete();
+      toast({
+        title: "Submission Rejected",
+        description: "The submitter can try again with improvements",
+      });
     } catch (error) {
       console.error('Error rejecting submission:', error);
       toast({
         title: "Error",
-        description: "Failed to reject submission. Please try again.",
+        description: "Failed to reject submission",
         variant: "destructive",
       });
     } finally {
-      setIsRejecting(false);
+      setLoading(false);
     }
   };
 
   const handleReport = async () => {
-    if (!reportReason) return;
-    
+    if (!reportReason || !reportDescription) {
+      toast({
+        title: "Missing information",
+        description: "Please provide both reason and description",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
     try {
-      const { error } = await supabase
+      const { data: existingChallenge } = await supabase
+        .from('user_challenges')
+        .select('id')
+        .eq('user_id', submission.user_id)
+        .eq('challenge_id', submission.challenge_id)
+        .maybeSingle();
+
+      await supabase
         .from('submission_reports')
-        .insert({
-          user_challenge_id: '', // This will need to be looked up for backward compatibility
+        .insert([{
+          submission_id: submission.id,
+          user_challenge_id: existingChallenge?.id || null,
           reporter_id: currentUserId,
           reason: reportReason,
-          description: reportDescription || null
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Report submitted",
-        description: "Thank you for reporting this submission. It will be reviewed by moderators.",
-      });
+          description: reportDescription
+        }]);
 
       setShowReportDialog(false);
-      setReportReason("");
-      setReportDescription("");
+      toast({
+        title: "Report Submitted",
+        description: "Thank you for helping keep the community safe",
+      });
     } catch (error) {
       console.error('Error reporting submission:', error);
       toast({
         title: "Error",
-        description: "Failed to submit report. Please try again.",
+        description: "Failed to submit report",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   const getStatusBadge = () => {
     switch (submission.status) {
       case 'pending':
-        return <Badge variant="outline" className="flex items-center gap-1"><Clock className="w-3 h-3" />Pending Validation</Badge>;
+        return <Badge variant="outline" className="bg-orange-100 text-orange-700">Pending</Badge>;
       case 'approved':
-        return <Badge variant="default" className="flex items-center gap-1 bg-green-500"><CheckCircle className="w-3 h-3" />Approved ✅</Badge>;
+        return <Badge variant="outline" className="bg-green-100 text-green-700">Approved</Badge>;
       case 'rejected':
-        return <Badge variant="destructive" className="flex items-center gap-1"><XCircle className="w-3 h-3" />Rejected ❌</Badge>;
+        return <Badge variant="outline" className="bg-red-100 text-red-700">Rejected</Badge>;
       default:
-        return <Badge variant="outline">Unknown Status</Badge>;
+        return null;
     }
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-3">
-            <Avatar>
-              <AvatarImage src={submission.profiles.avatar_url || ""} />
-              <AvatarFallback>
-                {submission.profiles.display_name?.[0] || submission.profiles.username[0]}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <CardTitle className="text-base">
-                {submission.profiles.display_name || submission.profiles.username}
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Challenge: {submission.challenges.title}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Submitted {formatDistanceToNow(new Date(submission.created_at), { addSuffix: true })}
-              </p>
+    <>
+      <Card className="overflow-hidden">
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Avatar>
+                <AvatarImage src={submission.profiles.avatar_url || undefined} />
+                <AvatarFallback>
+                  {submission.profiles.display_name?.charAt(0) || submission.profiles.username?.charAt(0) || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="font-semibold">{submission.profiles.display_name || submission.profiles.username}</p>
+                <p className="text-sm text-muted-foreground">{submission.challenges.title}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {getStatusBadge()}
+              <Badge variant="secondary">{submission.challenges.points_reward} pts</Badge>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {getStatusBadge()}
-            <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  <Flag className="w-4 h-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Report Submission</DialogTitle>
-                  <DialogDescription>
-                    Help us maintain quality by reporting inappropriate or problematic submissions.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <Select value={reportReason} onValueChange={setReportReason}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a reason" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="inappropriate">Inappropriate content</SelectItem>
-                      <SelectItem value="spam">Spam or fake submission</SelectItem>
-                      <SelectItem value="fraud">Fraudulent evidence</SelectItem>
-                      <SelectItem value="violation">Violates community guidelines</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Textarea
-                    placeholder="Additional details (optional)"
-                    value={reportDescription}
-                    onChange={(e) => setReportDescription(e.target.value)}
-                  />
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowReportDialog(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleReport} disabled={!reportReason}>
-                    Submit Report
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="space-y-4">
-        {/* Proof Content */}
-        {submission.proof_image_url && (
-          <div>
-            <img 
-              src={submission.proof_image_url} 
-              alt="Submission proof" 
-              className="w-full max-w-md rounded-lg"
-            />
-          </div>
-        )}
-        
-        {submission.proof_text && (
-          <div>
-            <h4 className="text-sm font-medium mb-2">Description:</h4>
-            <p className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
-              {submission.proof_text}
-            </p>
-          </div>
-        )}
+        </CardHeader>
 
-        {/* Rejection feedback */}
-        {submission.status === 'rejected' && (
-          <div className="bg-red-50 p-3 rounded-lg border border-red-200">
-            <h4 className="text-sm font-medium text-red-800 mb-1">Rejection Reason:</h4>
-            <p className="text-sm text-red-700">{submission.rejection_reason}</p>
-            {submission.validator_comment && (
-              <>
-                <h4 className="text-sm font-medium text-red-800 mb-1 mt-2">Validator Comment:</h4>
-                <p className="text-sm text-red-700">{submission.validator_comment}</p>
-              </>
-            )}
-          </div>
-        )}
+        <CardContent className="space-y-4">
+          {/* Submission Proof */}
+          {submission.proof_text && (
+            <div>
+              <h4 className="font-medium mb-2">Submission Description:</h4>
+              <p className="text-sm text-muted-foreground">{submission.proof_text}</p>
+            </div>
+          )}
 
-        {/* Validation Actions */}
-        {canValidate && submission.status === 'pending' && (
-          <div className="flex gap-2 pt-4 border-t">
-            <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
-              <DialogTrigger asChild>
-                <Button className="flex-1">
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Approve
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Approve Submission</DialogTitle>
-                  <DialogDescription>
-                    Approve this submission and award {submission.challenges.points_reward || 10} points to the user?
-                  </DialogDescription>
-                </DialogHeader>
-                <div>
-                  <Textarea
-                    placeholder="Optional comment for the submitter"
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                  />
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowApproveDialog(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleApprove} disabled={isApproving}>
-                    {isApproving ? "Approving..." : "Approve Submission"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+          {submission.proof_image_url && (
+            <div className="rounded-lg overflow-hidden">
+              <img 
+                src={submission.proof_image_url} 
+                alt="Submission proof" 
+                className="w-full h-auto max-h-96 object-cover"
+              />
+            </div>
+          )}
 
-            <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-              <DialogTrigger asChild>
-                <Button variant="destructive" className="flex-1">
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Reject
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Reject Submission</DialogTitle>
-                  <DialogDescription>
-                    Please provide a reason for rejecting this submission.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <Select value={rejectionReason} onValueChange={setRejectionReason}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select rejection reason" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {REJECTION_REASONS.map(reason => (
-                        <SelectItem key={reason} value={reason}>
-                          {reason}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Textarea
-                    placeholder="Additional feedback for the submitter"
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                  />
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
-                    Cancel
-                  </Button>
-                  <Button 
-                    variant="destructive" 
-                    onClick={handleReject} 
-                    disabled={isRejecting || !rejectionReason}
-                  >
-                    {isRejecting ? "Rejecting..." : "Reject Submission"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+          {submission.proof_video_url && (
+            <div className="rounded-lg overflow-hidden bg-secondary/20 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Video className="w-4 h-4" />
+                <span className="text-sm font-medium">Video Submission</span>
+              </div>
+              <a 
+                href={submission.proof_video_url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-sm text-primary hover:underline"
+              >
+                View Video
+              </a>
+            </div>
+          )}
+
+          {/* Validation Actions */}
+          {canValidate && submission.status === 'pending' && (
+            <div className="flex gap-2 pt-4 border-t">
+              <Button
+                onClick={() => setShowApproveDialog(true)}
+                variant="default"
+                className="flex-1"
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Approve
+              </Button>
+              <Button
+                onClick={() => setShowRejectDialog(true)}
+                variant="destructive"
+                className="flex-1"
+              >
+                <XCircle className="w-4 h-4 mr-2" />
+                Reject
+              </Button>
+            </div>
+          )}
+
+          {/* Show rejection feedback if rejected */}
+          {submission.status === 'rejected' && submission.rejection_reason && (
+            <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+              <h4 className="font-medium text-red-700 mb-2">Rejection Reason:</h4>
+              <p className="text-sm text-red-600 mb-2">{submission.rejection_reason}</p>
+              {submission.validator_comment && (
+                <p className="text-sm text-muted-foreground italic">{submission.validator_comment}</p>
+              )}
+            </div>
+          )}
+
+          {/* Report button (visible to all users) */}
+          <Button
+            onClick={() => setShowReportDialog(true)}
+            variant="ghost"
+            size="sm"
+            className="w-full"
+          >
+            <AlertTriangle className="w-4 h-4 mr-2" />
+            Report Submission
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Approve Dialog */}
+      <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Approve Submission</DialogTitle>
+            <DialogDescription>
+              This will award {submission.challenges.points_reward} points to {submission.profiles.display_name || submission.profiles.username}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="approve-comment">Comment (optional)</Label>
+              <Textarea
+                id="approve-comment"
+                value={validatorComment}
+                onChange={(e) => setValidatorComment(e.target.value)}
+                placeholder="Add a positive comment or feedback..."
+                rows={3}
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button onClick={() => setShowApproveDialog(false)} variant="outline" className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleApprove} disabled={loading} className="flex-1">
+                {loading ? "Approving..." : "Approve Submission"}
+              </Button>
+            </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Dialog */}
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Submission</DialogTitle>
+            <DialogDescription>
+              Please provide a reason so the user can improve their next attempt
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="rejection-reason">Rejection Reason *</Label>
+              <Select value={rejectionReason} onValueChange={setRejectionReason}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a reason" />
+                </SelectTrigger>
+                <SelectContent>
+                  {REJECTION_REASONS.map((reason) => (
+                    <SelectItem key={reason} value={reason}>{reason}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="rejection-comment">Additional Comment</Label>
+              <Textarea
+                id="rejection-comment"
+                value={rejectionComment}
+                onChange={(e) => setRejectionComment(e.target.value)}
+                placeholder="Provide specific feedback to help them improve..."
+                rows={3}
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button onClick={() => setShowRejectDialog(false)} variant="outline" className="flex-1">
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleReject} 
+                disabled={loading || !rejectionReason} 
+                variant="destructive"
+                className="flex-1"
+              >
+                {loading ? "Rejecting..." : "Reject Submission"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Report Dialog */}
+      <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Report Submission</DialogTitle>
+            <DialogDescription>
+              Help us maintain community standards by reporting inappropriate content
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="report-reason">Reason *</Label>
+              <Select value={reportReason} onValueChange={setReportReason}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a reason" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="inappropriate">Inappropriate Content</SelectItem>
+                  <SelectItem value="spam">Spam</SelectItem>
+                  <SelectItem value="fake">Fake/Fraudulent</SelectItem>
+                  <SelectItem value="offensive">Offensive</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="report-description">Description *</Label>
+              <Textarea
+                id="report-description"
+                value={reportDescription}
+                onChange={(e) => setReportDescription(e.target.value)}
+                placeholder="Provide details about why you're reporting this submission..."
+                rows={3}
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button onClick={() => setShowReportDialog(false)} variant="outline" className="flex-1">
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleReport} 
+                disabled={loading || !reportReason || !reportDescription} 
+                variant="destructive"
+                className="flex-1"
+              >
+                {loading ? "Submitting..." : "Submit Report"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

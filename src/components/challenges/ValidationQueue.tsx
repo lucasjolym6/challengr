@@ -3,17 +3,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ValidationCard } from "./ValidationCard";
+import { SubmissionValidationCard } from "./SubmissionValidationCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Bell, CheckCircle, Clock, AlertTriangle } from "lucide-react";
 
-interface UserChallenge {
+interface Submission {
   id: string;
   proof_text?: string;
   proof_image_url?: string;
-  completed_at?: string;
-  validation_status: string;
+  proof_video_url?: string;
+  created_at: string;
+  validated_at?: string;
+  status: string;
   rejection_reason?: string;
   validator_comment?: string;
   user_id: string;
@@ -32,8 +34,8 @@ interface UserChallenge {
 
 export function ValidationQueue() {
   const { toast } = useToast();
-  const [pendingSubmissions, setPendingSubmissions] = useState<UserChallenge[]>([]);
-  const [myValidations, setMyValidations] = useState<UserChallenge[]>([]);
+  const [pendingSubmissions, setPendingSubmissions] = useState<Submission[]>([]);
+  const [myValidations, setMyValidations] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [validationCapabilities, setValidationCapabilities] = useState<Record<string, boolean>>({});
@@ -60,80 +62,95 @@ export function ValidationQueue() {
 
     setLoading(true);
     try {
+      // Fetch pending submissions for challenges I created
+      const { data: myChallenges } = await supabase
+        .from('challenges')
+        .select('id')
+        .eq('created_by', currentUserId);
+
+      const myChallengeIds = myChallenges?.map(c => c.id) || [];
+
       // Fetch pending submissions that need validation
-      const { data: pending, error: pendingError } = await supabase
-        .from('user_challenges')
+      const { data: pendingData, error: pendingError } = await supabase
+        .from('submissions')
         .select(`
           id,
           proof_text,
           proof_image_url,
-          completed_at,
-          validation_status,
+          proof_video_url,
+          created_at,
+          status,
           rejection_reason,
           validator_comment,
           user_id,
-          challenge_id,
-          challenges!inner (
-            title,
-            description,
-            points_reward
-          ),
-          profiles!inner (
-            username,
-            display_name,
-            avatar_url
-          )
+          challenge_id
         `)
-        .eq('validation_status', 'pending')
-        .neq('user_id', currentUserId) // Don't show own submissions
-        .order('completed_at', { ascending: true });
+        .eq('status', 'pending')
+        .in('challenge_id', myChallengeIds.length > 0 ? myChallengeIds : ['00000000-0000-0000-0000-000000000000'])
+        .order('created_at', { ascending: true });
 
       if (pendingError) throw pendingError;
 
+      // Fetch related data for pending submissions
+      const pending = await Promise.all((pendingData || []).map(async (sub) => {
+        const [challengeRes, profileRes] = await Promise.all([
+          supabase.from('challenges').select('title, description, points_reward').eq('id', sub.challenge_id).single(),
+          supabase.from('profiles').select('username, display_name, avatar_url').eq('user_id', sub.user_id).single()
+        ]);
+        
+        return {
+          ...sub,
+          challenges: challengeRes.data || { title: '', description: '', points_reward: 0 },
+          profiles: profileRes.data || { username: '', display_name: '', avatar_url: '' }
+        };
+      }));
+
       // Fetch submissions I've validated
-      const { data: myValidated, error: validatedError } = await supabase
-        .from('user_challenges')
+      const { data: myValidatedData, error: validatedError } = await supabase
+        .from('submissions')
         .select(`
           id,
           proof_text,
           proof_image_url,
-          completed_at,
-          validation_status,
+          proof_video_url,
+          created_at,
+          validated_at,
+          status,
           rejection_reason,
           validator_comment,
           user_id,
-          challenge_id,
-          challenges!inner (
-            title,
-            description,
-            points_reward
-          ),
-          profiles!inner (
-            username,
-            display_name,
-            avatar_url
-          )
+          challenge_id
         `)
-        .eq('validated_by', currentUserId)
+        .eq('validator_id', currentUserId)
+        .in('status', ['approved', 'rejected'])
         .order('validated_at', { ascending: false });
 
       if (validatedError) throw validatedError;
 
-      // Check validation capabilities for each pending submission
+      // Fetch related data for validated submissions
+      const myValidated = await Promise.all((myValidatedData || []).map(async (sub) => {
+        const [challengeRes, profileRes] = await Promise.all([
+          supabase.from('challenges').select('title, description, points_reward').eq('id', sub.challenge_id).single(),
+          supabase.from('profiles').select('username, display_name, avatar_url').eq('user_id', sub.user_id).single()
+        ]);
+        
+        return {
+          ...sub,
+          challenges: challengeRes.data || { title: '', description: '', points_reward: 0 },
+          profiles: profileRes.data || { username: '', display_name: '', avatar_url: '' }
+        };
+      }));
+
+      // All submissions from my challenges can be validated by me
       const capabilities: Record<string, boolean> = {};
       if (pending) {
         for (const submission of pending) {
-          const { data: canValidate } = await supabase.rpc('can_validate_challenge', {
-            validator_user_id: currentUserId,
-            challenge_id_param: submission.challenge_id,
-            submission_user_id: submission.user_id
-          });
-          capabilities[submission.id] = canValidate || false;
+          capabilities[submission.id] = true; // Challenge creator can always validate
         }
       }
 
-      setPendingSubmissions(pending || []);
-      setMyValidations(myValidated || []);
+      setPendingSubmissions(pending);
+      setMyValidations(myValidated);
       setValidationCapabilities(capabilities);
     } catch (error) {
       console.error('Error fetching submissions:', error);
@@ -228,9 +245,9 @@ export function ValidationQueue() {
                 }
 
                 return (
-                  <ValidationCard
+                  <SubmissionValidationCard
                     key={submission.id}
-                    userChallenge={submission}
+                    submission={submission}
                     currentUserId={currentUserId}
                     canValidate={canValidate}
                     onValidationComplete={handleValidationComplete}
@@ -255,9 +272,9 @@ export function ValidationQueue() {
           ) : (
             <div className="space-y-4">
               {myValidations.map((submission) => (
-                <ValidationCard
+                <SubmissionValidationCard
                   key={submission.id}
-                  userChallenge={submission}
+                  submission={submission}
                   currentUserId={currentUserId}
                   canValidate={false} // Already validated
                   onValidationComplete={handleValidationComplete}

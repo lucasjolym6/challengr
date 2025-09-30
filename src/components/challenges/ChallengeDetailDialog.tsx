@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { Play, Users, CheckCircle, Clock, Trophy, Target } from "lucide-react";
+import { Play, Users, CheckCircle, Clock, Trophy, Target, XCircle } from "lucide-react";
 
 interface Challenge {
   id: string;
@@ -493,21 +493,61 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
           )}
 
           {displayStatus === 'rejected' && (
-            <div className="text-center p-6 bg-red-50 rounded-lg border border-red-200">
-              <CheckCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-red-700 mb-2">Submission Rejected</h3>
-              <p className="text-muted-foreground mb-4">
-                Your submission was not approved. You can resubmit with improvements.
-              </p>
-              <Button 
-                onClick={() => {
-                  // Reset to in_progress state to allow resubmission
-                  // This would need backend support
-                }}
-                variant="outline"
-              >
-                Try Again
-              </Button>
+            <div className="space-y-4">
+              <div className="text-center p-6 bg-red-50 rounded-lg border border-red-200">
+                <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-red-700 mb-2">Submission Rejected</h3>
+                <p className="text-muted-foreground mb-2">
+                  Your submission was not approved. You can try again with improvements.
+                </p>
+                {userSubmission?.rejection_reason && (
+                  <div className="text-left bg-white p-3 rounded-lg mb-4">
+                    <h4 className="font-medium text-red-700 mb-2">Rejection Reason:</h4>
+                    <p className="text-sm text-red-600 mb-2">{userSubmission.rejection_reason}</p>
+                    {userSubmission.validator_comment && (
+                      <p className="text-sm text-muted-foreground italic">{userSubmission.validator_comment}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5" />
+                  Try Again - Submit New Proof
+                </h3>
+                
+                <div>
+                  <Label htmlFor="retry-proof-text">Describe your experience</Label>
+                  <Textarea
+                    id="retry-proof-text"
+                    value={submissionText}
+                    onChange={(e) => setSubmissionText(e.target.value)}
+                    placeholder="Tell us about how you completed this challenge..."
+                    className="mt-2"
+                    rows={4}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="retry-proof-image">Upload photo/video (optional)</Label>
+                  <Input
+                    id="retry-proof-image"
+                    type="file"
+                    accept="image/*,video/*"
+                    onChange={(e) => setSubmissionImage(e.target.files?.[0] || null)}
+                    className="mt-2"
+                  />
+                </div>
+
+                <Button 
+                  onClick={submitProof} 
+                  className="w-full"
+                  disabled={!submissionText || isSubmitting}
+                >
+                  {isSubmitting ? "Submitting..." : "Resubmit for Validation"}
+                </Button>
+              </div>
             </div>
           )}
 
