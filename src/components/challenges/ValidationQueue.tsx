@@ -180,30 +180,66 @@ export function ValidationQueue() {
       setMyValidations(myValidated);
       setValidationCapabilities(capabilities);
 
-      // Fetch unverified posts for challenges I created
+      // Fetch unverified posts
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
-        .select(`
-          *,
-          profiles (username, display_name, avatar_url),
-          user_challenges (
-            challenges (
-              id,
-              title,
-              created_by,
-              challenge_categories (name, icon)
-            )
-          )
-        `)
+        .select('id, content, image_url, created_at, user_id, user_challenge_id, hashtags, verified')
         .eq('verified', false)
         .order('created_at', { ascending: true });
 
       if (postsError) throw postsError;
 
-      // Filter posts for challenges I created
-      const myPosts = (postsData || []).filter(post => 
-        post.user_challenges?.challenges?.created_by === currentUserId
-      );
+      const posts = postsData || [];
+
+      // Collect related ids
+      const userIds = Array.from(new Set(posts.map(p => p.user_id)));
+      const ucIds = Array.from(new Set(posts.map(p => p.user_challenge_id).filter(Boolean))) as string[];
+
+      // Fetch user_challenges and profiles in parallel
+      const [ucRes, profilesRes] = await Promise.all([
+        ucIds.length
+          ? supabase.from('user_challenges').select('id, challenge_id').in('id', ucIds)
+          : Promise.resolve({ data: [] as { id: string; challenge_id: string }[] }),
+        userIds.length
+          ? supabase.from('profiles').select('user_id, username, display_name, avatar_url').in('user_id', userIds)
+          : Promise.resolve({ data: [] as any[] })
+      ]);
+
+      const ucData = (ucRes as any).data as { id: string; challenge_id: string }[];
+      const profilesData = (profilesRes as any).data as { user_id: string; username: string; display_name: string; avatar_url: string | null }[];
+
+      const ucById = new Map(ucData.map(uc => [uc.id, uc.challenge_id] as const));
+      const profileByUser = new Map(profilesData.map(p => [p.user_id, p] as const));
+
+      const challengeIds = Array.from(new Set(ucData.map(uc => uc.challenge_id)));
+
+      // Fetch related challenges
+      const { data: challengesData } = challengeIds.length
+        ? await supabase.from('challenges').select('id, title, created_by, category_id').in('id', challengeIds)
+        : { data: [] as { id: string; title: string; created_by: string; category_id: string | null }[] };
+
+      const challengeById = new Map((challengesData || []).map(c => [c.id, c] as const));
+
+      // Keep only posts from challenges I created
+      const myPosts = posts
+        .filter(p => {
+          const challengeId = p.user_challenge_id ? ucById.get(p.user_challenge_id) : undefined;
+          if (!challengeId) return false;
+          const ch = challengeById.get(challengeId);
+          return ch?.created_by === currentUserId;
+        })
+        .map(p => {
+          const profile = profileByUser.get(p.user_id);
+          const challengeId = p.user_challenge_id ? ucById.get(p.user_challenge_id) : undefined;
+          const ch = challengeId ? challengeById.get(challengeId) : undefined;
+          return {
+            ...p,
+            profiles: profile || { username: '', display_name: '', avatar_url: null },
+            user_challenges: ch
+              ? { challenges: { title: ch.title, challenge_categories: null as any } }
+              : null
+          } as Post;
+        });
 
       setPendingPosts(myPosts);
     } catch (error) {
