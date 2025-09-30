@@ -180,7 +180,7 @@ export function ValidationQueue() {
       setMyValidations(myValidated);
       setValidationCapabilities(capabilities);
 
-      // Fetch unverified posts
+      // Fetch all unverified posts - we'll filter by challenge ownership client-side
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select('id, content, image_url, created_at, user_id, user_challenge_id, hashtags, verified')
@@ -190,57 +190,120 @@ export function ValidationQueue() {
       if (postsError) throw postsError;
 
       const posts = postsData || [];
+      console.log('Fetched unverified posts:', posts.length);
 
-      // Collect related ids
-      const userIds = Array.from(new Set(posts.map(p => p.user_id)));
+      if (posts.length === 0) {
+        setPendingPosts([]);
+        return;
+      }
+
+      // Collect all unique user_challenge_ids
       const ucIds = Array.from(new Set(posts.map(p => p.user_challenge_id).filter(Boolean))) as string[];
+      const userIds = Array.from(new Set(posts.map(p => p.user_id)));
 
-      // Fetch user_challenges and profiles in parallel
-      const [ucRes, profilesRes] = await Promise.all([
-        ucIds.length
-          ? supabase.from('user_challenges').select('id, challenge_id').in('id', ucIds)
-          : Promise.resolve({ data: [] as { id: string; challenge_id: string }[] }),
-        userIds.length
-          ? supabase.from('profiles').select('user_id, username, display_name, avatar_url').in('user_id', userIds)
-          : Promise.resolve({ data: [] as any[] })
-      ]);
+      console.log('User challenge IDs from posts:', ucIds);
 
-      const ucData = (ucRes as any).data as { id: string; challenge_id: string }[];
-      const profilesData = (profilesRes as any).data as { user_id: string; username: string; display_name: string; avatar_url: string | null }[];
+      if (ucIds.length === 0) {
+        console.log('No user_challenge_ids found in posts');
+        setPendingPosts([]);
+        return;
+      }
 
-      const ucById = new Map(ucData.map(uc => [uc.id, uc.challenge_id] as const));
-      const profileByUser = new Map(profilesData.map(p => [p.user_id, p] as const));
+      // Fetch user_challenges to get challenge_ids
+      const { data: ucData, error: ucError } = await supabase
+        .from('user_challenges')
+        .select('id, challenge_id')
+        .in('id', ucIds);
 
+      if (ucError) {
+        console.error('Error fetching user_challenges:', ucError);
+        throw ucError;
+      }
+
+      console.log('User challenges data:', ucData);
+
+      const ucById = new Map(ucData.map(uc => [uc.id, uc.challenge_id]));
       const challengeIds = Array.from(new Set(ucData.map(uc => uc.challenge_id)));
 
-      // Fetch related challenges
-      const { data: challengesData } = challengeIds.length
-        ? await supabase.from('challenges').select('id, title, created_by, category_id').in('id', challengeIds)
-        : { data: [] as { id: string; title: string; created_by: string; category_id: string | null }[] };
+      console.log('Challenge IDs:', challengeIds);
 
-      const challengeById = new Map((challengesData || []).map(c => [c.id, c] as const));
+      if (challengeIds.length === 0) {
+        setPendingPosts([]);
+        return;
+      }
 
-      // Keep only posts from challenges I created
+      // Fetch challenges to check ownership
+      const { data: challengesData, error: challengesError } = await supabase
+        .from('challenges')
+        .select('id, title, created_by, category_id')
+        .in('id', challengeIds);
+
+      if (challengesError) {
+        console.error('Error fetching challenges:', challengesError);
+        throw challengesError;
+      }
+
+      console.log('Challenges data:', challengesData);
+      console.log('Current user ID:', currentUserId);
+
+      // Create lookup maps
+      const challengeById = new Map(challengesData.map(c => [c.id, c]));
+
+      // Filter posts where the challenge was created by current user AND submitter is NOT the current user
+      const postChallengeIds = new Set(
+        challengesData
+          .filter(c => c.created_by === currentUserId)
+          .map(c => c.id)
+      );
+
+      console.log('My challenge IDs:', Array.from(postChallengeIds));
+
+      // Fetch profiles for post authors
+      const { data: profilesData } = userIds.length > 0
+        ? await supabase
+            .from('profiles')
+            .select('user_id, username, display_name, avatar_url')
+            .in('user_id', userIds)
+        : { data: [] };
+
+      const profileByUser = new Map((profilesData || []).map(p => [p.user_id, p]));
+
+      // Filter and map posts
       const myPosts = posts
         .filter(p => {
-          const challengeId = p.user_challenge_id ? ucById.get(p.user_challenge_id) : undefined;
-          if (!challengeId) return false;
-          const ch = challengeById.get(challengeId);
-          return ch?.created_by === currentUserId;
+          if (!p.user_challenge_id) {
+            console.log('Post has no user_challenge_id:', p.id);
+            return false;
+          }
+          
+          const challengeId = ucById.get(p.user_challenge_id);
+          if (!challengeId) {
+            console.log('No challenge_id found for user_challenge:', p.user_challenge_id);
+            return false;
+          }
+
+          const isMyChallenge = postChallengeIds.has(challengeId);
+          const isNotMyPost = p.user_id !== currentUserId;
+          
+          console.log(`Post ${p.id}: challenge=${challengeId}, isMyChallenge=${isMyChallenge}, isNotMyPost=${isNotMyPost}`);
+          
+          return isMyChallenge && isNotMyPost;
         })
         .map(p => {
           const profile = profileByUser.get(p.user_id);
-          const challengeId = p.user_challenge_id ? ucById.get(p.user_challenge_id) : undefined;
+          const challengeId = ucById.get(p.user_challenge_id!);
           const ch = challengeId ? challengeById.get(challengeId) : undefined;
+          
           return {
             ...p,
-            profiles: profile || { username: '', display_name: '', avatar_url: null },
+            profiles: profile || { username: 'Unknown', display_name: 'Unknown User', avatar_url: null },
             user_challenges: ch
-              ? { challenges: { title: ch.title, challenge_categories: null as any } }
+              ? { challenges: { title: ch.title, challenge_categories: null } }
               : null
           } as Post;
         });
 
+      console.log('Filtered posts for validation:', myPosts.length);
       setPendingPosts(myPosts);
     } catch (error) {
       console.error('Error fetching submissions:', error);

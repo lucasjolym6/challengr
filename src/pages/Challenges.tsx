@@ -292,7 +292,7 @@ const Challenges = () => {
                 <Button 
                   onClick={(e) => {
                     e.stopPropagation();
-                    startChallenge(challenge.id);
+                    openChallengeDetail(challenge);
                   }}
                   className="flex-1"
                   size="sm"
