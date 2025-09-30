@@ -155,6 +155,62 @@ export type Database = {
           },
         ]
       }
+      coaching_content: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string
+          difficulty_level: number | null
+          full_content: string | null
+          id: string
+          is_premium: boolean | null
+          media_type: string | null
+          media_url: string | null
+          related_challenge_ids: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description: string
+          difficulty_level?: number | null
+          full_content?: string | null
+          id?: string
+          is_premium?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
+          related_challenge_ids?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          difficulty_level?: number | null
+          full_content?: string | null
+          id?: string
+          is_premium?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
+          related_challenge_ids?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coaching_content_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "challenge_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comments: {
         Row: {
           content: string
@@ -288,6 +344,7 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          is_premium: boolean | null
           level: number | null
           skills: string[] | null
           total_points: number | null
@@ -301,6 +358,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          is_premium?: boolean | null
           level?: number | null
           skills?: string[] | null
           total_points?: number | null
@@ -314,6 +372,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          is_premium?: boolean | null
           level?: number | null
           skills?: string[] | null
           total_points?: number | null
@@ -564,6 +623,24 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       validation_audit: {
         Row: {
           action: string
@@ -670,9 +747,16 @@ export type Database = {
         Args: { submission_id_param: string; validator_user_id: string }
         Returns: boolean
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -799,6 +883,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
