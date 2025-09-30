@@ -108,6 +108,7 @@ export type Database = {
           is_custom: boolean | null
           points_reward: number | null
           title: string
+          type: Database["public"]["Enums"]["challenge_type"]
           video_url: string | null
         }
         Insert: {
@@ -122,6 +123,7 @@ export type Database = {
           is_custom?: boolean | null
           points_reward?: number | null
           title: string
+          type?: Database["public"]["Enums"]["challenge_type"]
           video_url?: string | null
         }
         Update: {
@@ -136,6 +138,7 @@ export type Database = {
           is_custom?: boolean | null
           points_reward?: number | null
           title?: string
+          type?: Database["public"]["Enums"]["challenge_type"]
           video_url?: string | null
         }
         Relationships: [
@@ -757,6 +760,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      challenge_type: "company" | "community"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -885,6 +889,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      challenge_type: ["company", "community"],
     },
   },
 } as const

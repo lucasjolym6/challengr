@@ -25,6 +25,9 @@ const badgeVariants = cva(
         "to-do": "border-transparent bg-muted text-muted-foreground",
         "in-progress": "border-transparent bg-accent/10 text-accent border-accent/20",
         completed: "border-transparent bg-success/10 text-success border-success/20",
+        // Challenge type variants
+        company: "border-transparent bg-primary/10 text-primary border-primary/20",
+        community: "border-transparent bg-secondary/10 text-secondary border-secondary/20",
       },
     },
     defaultVariants: {

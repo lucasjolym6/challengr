@@ -24,6 +24,7 @@ interface Challenge {
   points_reward: number;
   is_custom: boolean;
   created_by: string | null;
+  type: 'company' | 'community';
   challenge_categories: {
     name: string;
     icon: string;
@@ -54,6 +55,7 @@ const Challenges = () => {
   const [userChallenges, setUserChallenges] = useState<UserChallenge[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedType, setSelectedType] = useState<'all' | 'company' | 'community'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
@@ -117,7 +119,8 @@ const Challenges = () => {
       const { error } = await supabase.from('challenges').insert([{
         ...newChallenge,
         created_by: user.id,
-        is_custom: true
+        is_custom: true,
+        type: 'community'
       }]);
 
       if (error) throw error;
@@ -226,9 +229,14 @@ const Challenges = () => {
     }
   };
 
-  const filteredChallenges = selectedCategory === 'all' 
-    ? challenges 
-    : challenges.filter(c => c.challenge_categories?.name === selectedCategory);
+  const filteredChallenges = challenges.filter(c => {
+    const categoryMatch = selectedCategory === 'all' || c.challenge_categories?.name === selectedCategory;
+    const typeMatch = selectedType === 'all' || c.type === selectedType;
+    return categoryMatch && typeMatch;
+  });
+
+  const companyChallenges = filteredChallenges.filter(c => c.type === 'company');
+  const communityChallenges = filteredChallenges.filter(c => c.type === 'community');
 
   const openChallengeDetail = (challenge: Challenge) => {
     setSelectedChallenge(challenge);
@@ -257,9 +265,9 @@ const Challenges = () => {
                   <Badge variant={getCategoryVariant(challenge.challenge_categories?.name || '')}>
                     {challenge.challenge_categories?.name}
                   </Badge>
-                  {challenge.is_custom && (
-                    <Badge variant="outline">Custom</Badge>
-                  )}
+                  <Badge variant={challenge.type === 'company' ? 'company' : 'community'}>
+                    {challenge.type === 'company' ? 'Company' : 'Community'}
+                  </Badge>
                 </div>
               </div>
             </div>
@@ -460,6 +468,14 @@ const Challenges = () => {
             </SelectContent>
           </Select>
         </div>
+
+        <Tabs value={selectedType} onValueChange={(v) => setSelectedType(v as 'all' | 'company' | 'community')} className="w-auto">
+          <TabsList>
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="company">Company</TabsTrigger>
+            <TabsTrigger value="community">Community</TabsTrigger>
+          </TabsList>
+        </Tabs>
         
         <div className="flex items-center gap-1 ml-auto">
           <Button
@@ -479,13 +495,43 @@ const Challenges = () => {
         </div>
       </div>
 
-      {/* Challenges Grid/List */}
-      <div className={viewMode === 'grid' 
-        ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
-        : "space-y-4"
-      }>
-        {filteredChallenges.map(renderChallengeCard)}
-      </div>
+      {/* Challenges Sections */}
+      {selectedType === 'all' ? (
+        <div className="space-y-8">
+          {/* Company Challenges Section */}
+          {companyChallenges.length > 0 && (
+            <div>
+              <h2 className="text-2xl font-bold mb-4">Company Challenges</h2>
+              <div className={viewMode === 'grid' 
+                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
+                : "space-y-4"
+              }>
+                {companyChallenges.map(renderChallengeCard)}
+              </div>
+            </div>
+          )}
+
+          {/* Community Challenges Section */}
+          {communityChallenges.length > 0 && (
+            <div>
+              <h2 className="text-2xl font-bold mb-4">Community Challenges</h2>
+              <div className={viewMode === 'grid' 
+                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
+                : "space-y-4"
+              }>
+                {communityChallenges.map(renderChallengeCard)}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className={viewMode === 'grid' 
+          ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
+          : "space-y-4"
+        }>
+          {filteredChallenges.map(renderChallengeCard)}
+        </div>
+      )}
 
       {filteredChallenges.length === 0 && (
         <div className="text-center py-12">
