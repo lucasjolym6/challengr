@@ -22,10 +22,17 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          muted: "hsl(var(--primary-muted))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
+          muted: "hsl(var(--secondary-muted))",
+        },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+          muted: "hsl(var(--success-muted))",
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
@@ -38,6 +45,7 @@ export default {
         accent: {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
+          muted: "hsl(var(--accent-muted))",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",
@@ -47,6 +55,14 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Challenge category colors
+        sports: "hsl(var(--sports))",
+        drawing: "hsl(var(--drawing))",
+        music: "hsl(var(--music))",
+        cooking: "hsl(var(--cooking))",
+        writing: "hsl(var(--writing))",
+        coding: "hsl(var(--coding))",
+        gardening: "hsl(var(--gardening))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -84,6 +100,10 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "fade-in": "fadeIn 0.3s ease-out",
+        "scale-in": "scaleIn 0.2s ease-out",
+        "slide-up": "slideUp 0.3s ease-out",
+        "pulse-glow": "pulseGlow 2s ease-in-out infinite",
       },
     },
   },
