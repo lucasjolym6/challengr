@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,57 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [canValidate, setCanValidate] = useState(false);
   const [pendingValidations, setPendingValidations] = useState<UserChallenge[]>([]);
+
+  useEffect(() => {
+    if (user && challenge && isOpen) {
+      checkCanValidate();
+      fetchPendingValidations();
+    }
+  }, [user, challenge, isOpen]);
+
+  const checkCanValidate = async () => {
+    if (!user || !challenge) return;
+    
+    try {
+      const { data, error } = await supabase.rpc('can_validate_challenge', {
+        validator_user_id: user.id,
+        challenge_id_param: challenge.id,
+        submission_user_id: 'dummy-user-id' // We'll check this for each individual submission
+      });
+      
+      if (error) throw error;
+      setCanValidate(data || false);
+    } catch (error) {
+      console.error('Error checking validation capability:', error);
+      setCanValidate(false);
+    }
+  };
+
+  const fetchPendingValidations = async () => {
+    if (!user || !challenge) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_challenges')
+        .select(`
+          *,
+          profiles (
+            username,
+            display_name,
+            avatar_url
+          )
+        `)
+        .eq('challenge_id', challenge.id)
+        .eq('validation_status', 'pending')
+        .neq('user_id', user.id);
+      
+      if (error) throw error;
+      setPendingValidations(data || []);
+    } catch (error) {
+      console.error('Error fetching pending validations:', error);
+      setPendingValidations([]);
+    }
+  };
 
   if (!challenge) return null;
 

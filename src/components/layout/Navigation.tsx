@@ -8,7 +8,8 @@ import {
   Users, 
   User, 
   LogOut,
-  Zap
+  Zap,
+  Shield
 } from 'lucide-react';
 
 export const Navigation: React.FC = () => {
@@ -71,6 +72,19 @@ export const Navigation: React.FC = () => {
           >
             <Users className="h-5 w-5 md:h-4 md:w-4" />
             <span className="text-xs md:text-sm">Community</span>
+          </Button>
+        </Link>
+
+        <Link to="/validation">
+          <Button
+            variant={isActive('/validation') ? 'default' : 'ghost'}
+            size="sm"
+            className={`flex-col md:flex-row md:w-full md:justify-start gap-1 md:gap-2 h-auto md:h-10 py-2 md:py-2 px-2 md:px-3 ${
+              isActive('/validation') ? 'bg-primary text-primary-foreground' : ''
+            }`}
+          >
+            <Shield className="h-5 w-5 md:h-4 md:w-4" />
+            <span className="text-xs md:text-sm">Validation</span>
           </Button>
         </Link>
 
