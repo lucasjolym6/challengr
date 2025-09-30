@@ -11,7 +11,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { Plus, Filter, Grid3X3, List, Users, User, Play, CheckCircle } from "lucide-react";
+import { Plus, Filter, Grid3X3, List, Users, User, Play, CheckCircle, Trophy, MessageSquare } from "lucide-react";
+import ChallengeDetailDialog from "@/components/challenges/ChallengeDetailDialog";
+import ChallengeFeed from "@/components/challenges/ChallengeFeed";
+import CommunityStats from "@/components/challenges/CommunityStats";
 
 interface Challenge {
   id: string;
@@ -54,6 +57,9 @@ const Challenges = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
+  const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState<'challenges' | 'feed' | 'community'>('challenges');
   const [loading, setLoading] = useState(true);
 
   // Form state for creating custom challenges
@@ -225,12 +231,21 @@ const Challenges = () => {
     ? challenges 
     : challenges.filter(c => c.challenge_categories?.name === selectedCategory);
 
+  const openChallengeDetail = (challenge: Challenge) => {
+    setSelectedChallenge(challenge);
+    setShowDetailDialog(true);
+  };
+
   const renderChallengeCard = (challenge: Challenge) => {
     const userChallenge = getUserChallengeStatus(challenge.id);
     const status = userChallenge?.status || 'to_do';
 
     return (
-      <Card key={challenge.id} className="group hover:shadow-lg transition-all duration-300">
+      <Card 
+        key={challenge.id} 
+        className="group hover:shadow-lg transition-all duration-300 cursor-pointer"
+        onClick={() => openChallengeDetail(challenge)}
+      >
         <CardHeader className="pb-4">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
@@ -268,7 +283,10 @@ const Challenges = () => {
             {status === 'to_do' && (
               <>
                 <Button 
-                  onClick={() => startChallenge(challenge.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startChallenge(challenge.id);
+                  }}
                   className="flex-1"
                   size="sm"
                 >
@@ -279,6 +297,7 @@ const Challenges = () => {
                   variant="outline" 
                   size="sm"
                   className="flex-1"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <Users className="w-4 h-4 mr-1" />
                   Find Partner
@@ -287,7 +306,10 @@ const Challenges = () => {
             )}
             {status === 'in_progress' && (
               <Button 
-                onClick={() => userChallenge && completeChallenge(userChallenge.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  userChallenge && completeChallenge(userChallenge.id);
+                }}
                 variant="success"
                 className="flex-1"
                 size="sm"
@@ -329,7 +351,7 @@ const Challenges = () => {
             Challenges
           </h1>
           <p className="text-muted-foreground">
-            Discover and create challenges to grow your skills
+            Discover, complete, and share challenges with the community
           </p>
         </div>
         
@@ -421,67 +443,104 @@ const Challenges = () => {
         </div>
       </div>
 
-      {/* Filters and View Toggle */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4" />
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {categories.map((category) => (
-                <SelectItem key={category.id} value={category.name}>
-                  {category.icon} {category.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div className="flex items-center gap-1 ml-auto">
-          <Button
-            variant={viewMode === 'grid' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('grid')}
-          >
-            <Grid3X3 className="w-4 h-4" />
-          </Button>
-          <Button
-            variant={viewMode === 'list' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('list')}
-          >
-            <List className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
+      {/* Navigation Tabs */}
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="challenges" className="gap-2">
+            <User className="w-4 h-4" />
+            Challenges
+          </TabsTrigger>
+          <TabsTrigger value="feed" className="gap-2">
+            <MessageSquare className="w-4 h-4" />
+            Community Feed
+          </TabsTrigger>
+          <TabsTrigger value="community" className="gap-2">
+            <Trophy className="w-4 h-4" />
+            Leaderboard
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Challenges Grid/List */}
-      <div className={viewMode === 'grid' 
-        ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
-        : "space-y-4"
-      }>
-        {filteredChallenges.map(renderChallengeCard)}
-      </div>
+        <TabsContent value="challenges" className="space-y-6">
+          {/* Filters and View Toggle */}
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4" />
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.name}>
+                      {category.icon} {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-center gap-1 ml-auto">
+              <Button
+                variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('grid')}
+              >
+                <Grid3X3 className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+              >
+                <List className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
 
-      {filteredChallenges.length === 0 && (
-        <div className="text-center py-12">
-          <div className="text-4xl mb-4">🎯</div>
-          <h3 className="text-xl font-semibold mb-2">No challenges found</h3>
-          <p className="text-muted-foreground mb-4">
-            {selectedCategory === 'all' 
-              ? "No challenges available yet" 
-              : `No challenges found in ${selectedCategory} category`
-            }
-          </p>
-          <Button onClick={() => setShowCreateDialog(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create the first challenge
-          </Button>
-        </div>
-      )}
+          {/* Challenges Grid/List */}
+          <div className={viewMode === 'grid' 
+            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
+            : "space-y-4"
+          }>
+            {filteredChallenges.map(renderChallengeCard)}
+          </div>
+
+          {filteredChallenges.length === 0 && (
+            <div className="text-center py-12">
+              <div className="text-4xl mb-4">🎯</div>
+              <h3 className="text-xl font-semibold mb-2">No challenges found</h3>
+              <p className="text-muted-foreground mb-4">
+                {selectedCategory === 'all' 
+                  ? "No challenges available yet" 
+                  : `No challenges found in ${selectedCategory} category`
+                }
+              </p>
+              <Button onClick={() => setShowCreateDialog(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Create the first challenge
+              </Button>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="feed">
+          <ChallengeFeed />
+        </TabsContent>
+
+        <TabsContent value="community">
+          <CommunityStats />
+        </TabsContent>
+      </Tabs>
+
+      {/* Challenge Detail Dialog */}
+      <ChallengeDetailDialog
+        challenge={selectedChallenge}
+        userChallenge={selectedChallenge ? getUserChallengeStatus(selectedChallenge.id) : null}
+        isOpen={showDetailDialog}
+        onClose={() => setShowDetailDialog(false)}
+        onStatusUpdate={fetchData}
+      />
     </div>
   );
 };
