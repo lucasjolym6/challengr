@@ -32,6 +32,10 @@ interface UserChallenge {
   challenge_id: string;
   started_at: string | null;
   completed_at: string | null;
+  validation_status?: string;
+  proof_text?: string;
+  proof_image_url?: string;
+  proof_video_url?: string;
 }
 
 interface ChallengeDetailDialogProps {
@@ -112,6 +116,18 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
   if (!challenge) return null;
 
   const status = userChallenge?.status || 'to_do';
+  const validationStatus = userChallenge?.validation_status;
+  
+  // Determine the actual display status
+  const getDisplayStatus = () => {
+    if (!userChallenge) return 'to_do';
+    if (status === 'completed' && validationStatus === 'approved') return 'completed';
+    if (status === 'in_progress' && validationStatus === 'pending') return 'pending_validation';
+    if (validationStatus === 'rejected') return 'rejected';
+    return status;
+  };
+  
+  const displayStatus = getDisplayStatus();
 
   const startChallenge = async () => {
     if (!user) return;
@@ -181,7 +197,7 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
         proofVideoUrl = videoUrlData.publicUrl;
       }
 
-      // Update user challenge with proof and set to pending validation
+      // Update user challenge with proof but keep status as in_progress, set validation_status to pending
       const { error: challengeError } = await supabase
         .from('user_challenges')
         .update({
@@ -190,6 +206,7 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
           proof_image_url: proofImageUrl,
           proof_video_url: proofVideoUrl,
           validation_status: 'pending'
+          // Note: status remains 'in_progress' until validation is approved
         })
         .eq('id', userChallenge.id);
 
@@ -206,22 +223,45 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
 
       if (postError) throw postError;
 
-      // Notify validators about new submission
-      const { error: notificationError } = await supabase
-        .from('validator_notifications')
-        .insert([{
-          user_challenge_id: userChallenge.id,
-          validator_id: challenge.created_by || '', // Notify challenge creator
-          type: 'new_submission'
-        }]);
+      // Notify challenge creator about new submission
+      if (challenge.created_by) {
+        const { error: notificationError } = await supabase
+          .from('validator_notifications')
+          .insert([{
+            user_challenge_id: userChallenge.id,
+            validator_id: challenge.created_by,
+            type: 'new_submission'
+          }]);
 
-      if (notificationError) console.warn('Failed to create validator notification:', notificationError);
+        if (notificationError) console.warn('Failed to create validator notification:', notificationError);
+      }
+
+      // Also notify other eligible validators (users who have completed this challenge)
+      const { data: eligibleValidators, error: validatorsError } = await supabase
+        .from('user_challenges')
+        .select('user_id')
+        .eq('challenge_id', challenge.id)
+        .eq('status', 'completed')
+        .eq('validation_status', 'approved')
+        .neq('user_id', user.id); // Exclude current user
+
+      if (!validatorsError && eligibleValidators) {
+        for (const validator of eligibleValidators) {
+          await supabase
+            .from('validator_notifications')
+            .insert([{
+              user_challenge_id: userChallenge.id,
+              validator_id: validator.user_id,
+              type: 'new_submission'
+            }]);
+        }
+      }
 
       onStatusUpdate();
       onClose();
       toast({
         title: "Submission Pending Validation",
-        description: "Your proof has been submitted and is awaiting validation by eligible reviewers.",
+        description: "Your proof has been submitted and is awaiting validation by the challenge creator or qualified validators.",
       });
     } catch (error) {
       console.error('Error submitting proof:', error);
@@ -319,7 +359,7 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
           </div>
 
           {/* Actions based on status */}
-          {status === 'to_do' && (
+          {displayStatus === 'to_do' && (
             <div className="flex gap-3">
               <Button onClick={startChallenge} className="flex-1">
                 <Play className="w-4 h-4 mr-2" />
@@ -332,7 +372,7 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
             </div>
           )}
 
-          {status === 'in_progress' && (
+          {displayStatus === 'in_progress' && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold flex items-center gap-2">
                 <CheckCircle className="w-5 h-5" />
@@ -367,17 +407,52 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
                 className="w-full"
                 disabled={!submissionText || isSubmitting}
               >
-                {isSubmitting ? "Submitting..." : "Submit & Complete Challenge"}
+                {isSubmitting ? "Submitting..." : "Submit for Validation"}
               </Button>
             </div>
           )}
 
-          {status === 'completed' && (
-            <div className="text-center p-6 bg-success/10 rounded-lg border border-success/20">
-              <CheckCircle className="w-12 h-12 text-success mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-success mb-2">Challenge Completed!</h3>
+          {displayStatus === 'pending_validation' && (
+            <div className="text-center p-6 bg-orange-50 rounded-lg border border-orange-200">
+              <Clock className="w-12 h-12 text-orange-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-orange-700 mb-2">Submission Pending Validation</h3>
+              <p className="text-muted-foreground mb-4">
+                Your submission has been received and is awaiting validation by the challenge creator or qualified validators.
+              </p>
+              {userChallenge?.proof_text && (
+                <div className="text-left bg-white p-3 rounded-lg mb-4">
+                  <h4 className="font-medium mb-2">Your Submission:</h4>
+                  <p className="text-sm text-muted-foreground">{userChallenge.proof_text}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {displayStatus === 'rejected' && (
+            <div className="text-center p-6 bg-red-50 rounded-lg border border-red-200">
+              <CheckCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-red-700 mb-2">Submission Rejected</h3>
+              <p className="text-muted-foreground mb-4">
+                Your submission was not approved. You can resubmit with improvements.
+              </p>
+              <Button 
+                onClick={() => {
+                  // Reset to in_progress state to allow resubmission
+                  // This would need backend support
+                }}
+                variant="outline"
+              >
+                Try Again
+              </Button>
+            </div>
+          )}
+
+          {displayStatus === 'completed' && (
+            <div className="text-center p-6 bg-green-50 rounded-lg border border-green-200">
+              <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-green-700 mb-2">Challenge Completed!</h3>
               <p className="text-muted-foreground">
-                You've successfully completed this challenge and earned {challenge.points_reward} points.
+                Your submission was approved! You've earned {challenge.points_reward} points.
               </p>
             </div>
           )}
