@@ -10,7 +10,8 @@ import {
   LogOut,
   Zap,
   Shield,
-  GraduationCap
+  GraduationCap,
+  MessageCircle
 } from 'lucide-react';
 
 export const Navigation: React.FC = () => {
@@ -86,6 +87,19 @@ export const Navigation: React.FC = () => {
           >
             <GraduationCap className="h-5 w-5 md:h-4 md:w-4" />
             <span className="text-xs md:text-sm">Coaching</span>
+          </Button>
+        </Link>
+
+        <Link to="/messages">
+          <Button
+            variant={isActive('/messages') ? 'default' : 'ghost'}
+            size="sm"
+            className={`flex-col md:flex-row md:w-full md:justify-start gap-1 md:gap-2 h-auto md:h-10 py-2 md:py-2 px-2 md:px-3 ${
+              isActive('/messages') ? 'bg-primary text-primary-foreground' : ''
+            }`}
+          >
+            <MessageCircle className="h-5 w-5 md:h-4 md:w-4" />
+            <span className="text-xs md:text-sm">Messages</span>
           </Button>
         </Link>
 

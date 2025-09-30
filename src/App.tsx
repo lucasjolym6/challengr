@@ -12,6 +12,7 @@ import Coaching from "./pages/Coaching";
 import Profile from "./pages/Profile";
 import ValidationQueue from "./pages/ValidationQueue";
 import Pricing from "./pages/Pricing";
+import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
               <Route path="/challenges" element={<Challenges />} />
               <Route path="/community" element={<Community />} />
               <Route path="/coaching" element={<Coaching />} />
+              <Route path="/messages" element={<Messages />} />
               <Route path="/validation" element={<ValidationQueue />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/pricing" element={<Pricing />} />
