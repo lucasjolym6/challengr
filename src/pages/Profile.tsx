@@ -374,6 +374,28 @@ export default function Profile() {
     if (!user?.id) return;
 
     try {
+      // Check if friend request already exists in either direction
+      const { data: existingRequest } = await supabase
+        .from('user_friends')
+        .select('*')
+        .or(`and(user_id.eq.${user.id},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${user.id})`);
+
+      if (existingRequest && existingRequest.length > 0) {
+        const request = existingRequest[0];
+        if (request.status === 'accepted') {
+          toast({
+            title: "Already friends",
+            description: "You are already friends with this user",
+          });
+        } else if (request.status === 'pending') {
+          toast({
+            title: "Request pending",
+            description: "A friend request is already pending",
+          });
+        }
+        return;
+      }
+
       const { error } = await supabase
         .from('user_friends')
         .insert([
