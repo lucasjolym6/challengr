@@ -6,7 +6,9 @@ import { CoachingCard } from '@/components/coaching/CoachingCard';
 import { CoachingDetailDialog } from '@/components/coaching/CoachingDetailDialog';
 import { AdminCoachingManager } from '@/components/coaching/AdminCoachingManager';
 import { usePremiumStatus } from '@/hooks/usePremiumStatus';
-import { Loader2, GraduationCap, Shield } from 'lucide-react';
+import { UpgradePremiumButton } from '@/components/premium/UpgradePremiumButton';
+import { Loader2, GraduationCap, Shield, Crown } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -68,14 +70,19 @@ const Coaching = () => {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent flex items-center gap-2">
-          <GraduationCap className="w-8 h-8" />
-          Tuto & Coaching
-        </h1>
-        <p className="text-muted-foreground">
-          Learn new skills and get expert guidance to master your challenges
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent flex items-center gap-2">
+            <GraduationCap className="w-8 h-8" />
+            Tuto & Coaching
+          </h1>
+          <p className="text-muted-foreground">
+            Learn new skills and get expert guidance to master your challenges
+          </p>
+        </div>
+        {!premiumStatus?.isPremium && (
+          <UpgradePremiumButton size="lg" />
+        )}
       </div>
 
       <Tabs defaultValue="content" className="space-y-6">
@@ -125,12 +132,25 @@ const Coaching = () => {
           </div>
 
           {/* Premium Status Banner */}
-          {!premiumStatus?.isPremium && (
+          {premiumStatus?.isPremium ? (
             <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
-              <p className="text-sm">
-                <strong>Free User:</strong> You can preview all tutorials, but full content and media are locked. 
-                Upgrade to Premium to unlock everything!
+              <p className="text-sm font-medium flex items-center gap-2">
+                <Crown className="w-4 h-4" />
+                <Badge variant="default">Premium Member</Badge>
+                You have full access to all tutorials and coaching content
               </p>
+            </div>
+          ) : (
+            <div className="p-4 bg-muted border rounded-lg">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <p className="font-medium mb-1">Unlock Full Access</p>
+                  <p className="text-sm text-muted-foreground">
+                    Upgrade to premium to unlock all tutorials, coaching content, and exclusive features
+                  </p>
+                </div>
+                <UpgradePremiumButton />
+              </div>
             </div>
           )}
 

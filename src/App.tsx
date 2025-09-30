@@ -11,6 +11,7 @@ import Community from "./pages/Community";
 import Coaching from "./pages/Coaching";
 import Profile from "./pages/Profile";
 import ValidationQueue from "./pages/ValidationQueue";
+import Pricing from "./pages/Pricing";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
               <Route path="/coaching" element={<Coaching />} />
               <Route path="/validation" element={<ValidationQueue />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/pricing" element={<Pricing />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

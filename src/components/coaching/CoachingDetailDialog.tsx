@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Lock, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { UpgradePremiumButton } from '@/components/premium/UpgradePremiumButton';
 
 interface CoachingContent {
   id: string;
@@ -78,9 +79,7 @@ export const CoachingDetailDialog: React.FC<CoachingDetailDialogProps> = ({
                       <p className="text-muted-foreground mb-4">
                         Upgrade to Premium to unlock full tutorials and coaching content
                       </p>
-                      <Button onClick={() => navigate('/profile')}>
-                        Upgrade to Premium
-                      </Button>
+                      <UpgradePremiumButton size="lg" />
                     </div>
                   </div>
                 </div>
@@ -107,9 +106,7 @@ export const CoachingDetailDialog: React.FC<CoachingDetailDialogProps> = ({
               <p className="text-muted-foreground">
                 Full tutorial content is only available for Premium members
               </p>
-              <Button onClick={() => navigate('/profile')} variant="default">
-                Upgrade to Premium
-              </Button>
+              <UpgradePremiumButton size="lg" />
             </div>
           ) : (
             content.full_content && (
