@@ -242,28 +242,43 @@ export default function Profile() {
     if (!user?.id) return;
 
     try {
-      const { data: friendsData, error: friendsError } = await supabase
+      // Fetch friends where current user is user_id
+      const { data: friendsAsUser, error: error1 } = await supabase
         .from('user_friends')
         .select('*')
         .eq('user_id', user.id)
         .eq('status', 'accepted');
 
-      if (friendsError) {
-        console.error('Error fetching friends:', friendsError);
+      // Fetch friends where current user is friend_id
+      const { data: friendsAsFriend, error: error2 } = await supabase
+        .from('user_friends')
+        .select('*')
+        .eq('friend_id', user.id)
+        .eq('status', 'accepted');
+
+      if (error1 || error2) {
+        console.error('Error fetching friends:', error1 || error2);
         return;
       }
 
-      // Fetch profile data separately to avoid complex joins
-      if (friendsData && friendsData.length > 0) {
-        const friendIds = friendsData.map(f => f.friend_id);
+      const allFriendships = [...(friendsAsUser || []), ...(friendsAsFriend || [])];
+
+      if (allFriendships.length > 0) {
+        // Extract friend IDs from both directions
+        const friendIds = allFriendships.map(f => 
+          f.user_id === user.id ? f.friend_id : f.user_id
+        );
+
         const { data: profilesData } = await supabase
           .from('profiles')
           .select('*')
           .in('user_id', friendIds);
 
-        const friendsWithProfiles = friendsData.map(friend => ({
+        const friendsWithProfiles = allFriendships.map(friend => ({
           ...friend,
-          profiles: profilesData?.find(p => p.user_id === friend.friend_id) || null
+          profiles: profilesData?.find(p => 
+            p.user_id === (friend.user_id === user.id ? friend.friend_id : friend.user_id)
+          ) || null
         }));
 
         setFriends(friendsWithProfiles);
