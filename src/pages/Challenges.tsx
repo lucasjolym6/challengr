@@ -30,6 +30,10 @@ interface Challenge {
     icon: string;
     color: string;
   } | null;
+  profiles: {
+    display_name: string | null;
+    username: string;
+  } | null;
 }
 
 interface UserChallenge {
@@ -81,7 +85,8 @@ const Challenges = () => {
       const [challengesRes, categoriesRes, userChallengesRes] = await Promise.all([
         supabase.from('challenges').select(`
           *,
-          challenge_categories (name, icon, color)
+          challenge_categories (name, icon, color),
+          profiles!challenges_created_by_fkey (display_name, username)
         `).eq('is_active', true),
         supabase.from('challenge_categories').select('*'),
         user ? supabase.from('user_challenges').select(`
@@ -259,8 +264,13 @@ const Challenges = () => {
               <div className="text-2xl">
                 {challenge.challenge_categories?.icon || '🎯'}
               </div>
-              <div>
+              <div className="flex-1">
                 <CardTitle className="text-lg">{challenge.title}</CardTitle>
+                {challenge.profiles && (
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    by {challenge.profiles.display_name || challenge.profiles.username}
+                  </p>
+                )}
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant={getCategoryVariant(challenge.challenge_categories?.name || '')}>
                     {challenge.challenge_categories?.name}
