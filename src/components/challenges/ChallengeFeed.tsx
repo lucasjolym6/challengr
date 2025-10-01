@@ -480,7 +480,7 @@ const ChallengeFeed: React.FC = () => {
       `}</style>
 
       {/* Fixed View Mode Toggle */}
-      <div className="fixed top-[108px] left-1/2 -translate-x-1/2 z-30 flex items-center justify-center gap-3">
+      <div className="fixed top-[140px] left-1/2 -translate-x-1/2 z-30 flex items-center justify-center gap-3">
         <Button
           variant={viewMode === 'trending' ? 'default' : 'outline'}
           size="sm"
@@ -508,7 +508,7 @@ const ChallengeFeed: React.FC = () => {
       </div>
 
       {/* Fixed Card Container */}
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+      <div className="fixed top-[55%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
         {/* Swipe Hint Ghost Arrows */}
         {showSwipeHint && (
           <>
