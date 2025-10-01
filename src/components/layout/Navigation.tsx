@@ -12,7 +12,8 @@ import {
   Zap,
   Shield,
   Settings,
-  Crown
+  Crown,
+  MessageCircle
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -77,9 +78,9 @@ export const Navigation: React.FC = () => {
         </DropdownMenu>
       </header>
 
-      {/* Mobile-first: Bottom navigation (4 main items) */}
+      {/* Mobile-first: Bottom navigation (5 main items) */}
       <nav className="fixed bottom-0 left-0 right-0 h-16 bg-card/95 backdrop-blur-md border-t border-border z-50 md:hidden">
-        <div className="flex justify-around items-center h-full px-2">
+        <div className="flex justify-around items-center h-full px-1">
           <Link to="/" className="flex flex-col items-center justify-center flex-1 py-2">
             <Home className={`h-6 w-6 mb-1 ${isActive('/') ? 'text-primary' : 'text-muted-foreground'}`} />
             <span className={`text-xs ${isActive('/') ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
@@ -98,6 +99,13 @@ export const Navigation: React.FC = () => {
             <Users className={`h-6 w-6 mb-1 ${isActive('/community') ? 'text-primary' : 'text-muted-foreground'}`} />
             <span className={`text-xs ${isActive('/community') ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
               Community
+            </span>
+          </Link>
+
+          <Link to="/messages" className="flex flex-col items-center justify-center flex-1 py-2">
+            <MessageCircle className={`h-6 w-6 mb-1 ${isActive('/messages') ? 'text-primary' : 'text-muted-foreground'}`} />
+            <span className={`text-xs ${isActive('/messages') ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
+              Messages
             </span>
           </Link>
 
@@ -147,6 +155,16 @@ export const Navigation: React.FC = () => {
             >
               <Users className="h-4 w-4" />
               Community
+            </Button>
+          </Link>
+
+          <Link to="/messages">
+            <Button
+              variant={isActive('/messages') ? 'default' : 'ghost'}
+              className="w-full justify-start gap-2"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Messages
             </Button>
           </Link>
 
