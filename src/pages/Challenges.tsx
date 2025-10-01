@@ -9,10 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { Plus, Filter, Grid3X3, List, Users, Play, CheckCircle } from "lucide-react";
+import { Plus, Filter, Trophy, Target, TrendingUp } from "lucide-react";
 import ChallengeDetailDialog from "@/components/challenges/ChallengeDetailDialog";
 import { CreateChallengeDialog } from "@/components/challenges/CreateChallengeDialog";
 
@@ -63,7 +64,6 @@ const Challenges = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<'all' | 'company' | 'community'>('all');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
@@ -260,77 +260,105 @@ const Challenges = () => {
     return (
       <Card 
         key={challenge.id} 
-        className="group hover-lift overflow-hidden cursor-pointer"
+        className="group hover:shadow-lg transition-all duration-200 overflow-hidden cursor-pointer border-border/40"
         onClick={() => openChallengeDetail(challenge)}
       >
-        {/* Challenge Image */}
-        {challenge.image_url && (
-          <div className="relative h-48 w-full overflow-hidden bg-muted">
-            <img 
-              src={challenge.image_url} 
-              alt={challenge.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-          </div>
-        )}
-
-        <CardContent className="p-4 space-y-3">
-          {/* Creator Info */}
-          <div className="flex items-center gap-2">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={challenge.profiles?.avatar_url || undefined} />
-              <AvatarFallback className="text-xs bg-muted">{creatorInitials}</AvatarFallback>
-            </Avatar>
-            <span className="text-sm font-semibold">{creatorName}</span>
-            <Badge variant="outline" className="ml-auto text-xs">
-              {challenge.challenge_categories?.name}
+        {/* Challenge Image - Strava-style large banner */}
+        <div className="relative h-56 md:h-64 w-full overflow-hidden bg-muted">
+          {challenge.image_url ? (
+            <>
+              <img 
+                src={challenge.image_url} 
+                alt={challenge.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+            </>
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+              <Target className="w-20 h-20 text-primary/40" />
+            </div>
+          )}
+          
+          {/* Category badge overlaid on image */}
+          <div className="absolute top-4 left-4">
+            <Badge className="bg-background/90 backdrop-blur-sm text-foreground border-0 font-semibold">
+              {challenge.challenge_categories?.icon} {challenge.challenge_categories?.name}
             </Badge>
           </div>
 
-          {/* Title and Description */}
+          {/* Status badge */}
+          {status !== 'to_do' && (
+            <div className="absolute top-4 right-4">
+              {status === 'completed' ? (
+                <Badge className="bg-success backdrop-blur-sm text-white border-0 font-semibold">
+                  ✓ Completed
+                </Badge>
+              ) : (
+                <Badge className="bg-primary backdrop-blur-sm text-primary-foreground border-0 font-semibold">
+                  In Progress
+                </Badge>
+              )}
+            </div>
+          )}
+        </div>
+
+        <CardContent className="p-5 md:p-6 space-y-4">
+          {/* Title */}
           <div>
-            <h3 className="font-bold text-lg leading-tight mb-1">{challenge.title}</h3>
+            <h3 className="font-bold text-xl md:text-2xl leading-tight mb-2">{challenge.title}</h3>
             <p className="text-sm text-muted-foreground line-clamp-2">
               {challenge.description}
             </p>
           </div>
 
-          {/* Difficulty & Points */}
-          <div className="flex items-center justify-between text-sm text-muted-foreground pt-2">
-            <div className="flex items-center gap-1">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div 
-                  key={i} 
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    i < challenge.difficulty_level ? 'bg-primary' : 'bg-border'
-                  }`}
-                />
-              ))}
+          {/* Stats Row - Strava style */}
+          <div className="flex items-center justify-between py-3 border-y border-border/50">
+            <div className="flex flex-col items-center flex-1">
+              <span className="text-2xl font-bold text-foreground">{challenge.difficulty_level}</span>
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Difficulty</span>
             </div>
-            <span className="font-medium">{challenge.points_reward} pts</span>
+            <div className="w-px h-10 bg-border/50" />
+            <div className="flex flex-col items-center flex-1">
+              <span className="text-2xl font-bold text-primary">{challenge.points_reward}</span>
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Points</span>
+            </div>
+            <div className="w-px h-10 bg-border/50" />
+            <div className="flex flex-col items-center flex-1">
+              <span className="text-2xl font-bold text-foreground">{challenge.type === 'company' ? '🏢' : '👥'}</span>
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">{challenge.type === 'company' ? 'Company' : 'Community'}</span>
+            </div>
           </div>
 
-          {/* Status Badge & CTA */}
+          {/* Progress bar for in-progress challenges */}
+          {status === 'in_progress' && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Progress</span>
+                <span className="font-semibold">50%</span>
+              </div>
+              <Progress value={50} className="h-2" />
+            </div>
+          )}
+
+          {/* Creator Info */}
           <div className="flex items-center gap-2 pt-1">
-            {status === 'completed' ? (
-              <Badge className="bg-success/10 text-success border-success/20">
-                Completed
-              </Badge>
-            ) : status === 'in_progress' ? (
-              <Badge variant="outline" className="border-muted-foreground/30">
-                In Progress
-              </Badge>
-            ) : null}
-            
+            <Avatar className="h-7 w-7">
+              <AvatarImage src={challenge.profiles?.avatar_url || undefined} />
+              <AvatarFallback className="text-xs bg-muted">{creatorInitials}</AvatarFallback>
+            </Avatar>
+            <span className="text-sm text-muted-foreground">by {creatorName}</span>
+          </div>
+
+          {/* CTA Button - Strava style full-width orange */}
+          <div className="pt-2">
             {status === 'to_do' && (
               <Button 
                 onClick={(e) => {
                   e.stopPropagation();
                   openChallengeDetail(challenge);
                 }}
-                className="w-full"
-                size="sm"
+                className="w-full h-11 font-semibold text-base"
               >
                 Start Challenge
               </Button>
@@ -341,16 +369,14 @@ const Challenges = () => {
                   e.stopPropagation();
                   userChallenge && completeChallenge(userChallenge.id);
                 }}
-                variant="success"
-                className="w-full"
-                size="sm"
+                className="w-full h-11 font-semibold text-base"
               >
                 Submit Proof
               </Button>
             )}
             {status === 'completed' && (
-              <Button variant="outline" className="w-full" size="sm" disabled>
-                Challenge Complete
+              <Button variant="outline" className="w-full h-11 font-semibold text-base" disabled>
+                Completed
               </Button>
             )}
           </div>
@@ -373,112 +399,49 @@ const Challenges = () => {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            Challenges
-          </h1>
-          <p className="text-muted-foreground">
-            Discover, complete, and share challenges with the community
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Challenge
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create Custom Challenge</DialogTitle>
-                <DialogDescription>
-                  Create a personalized challenge for yourself or the community
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="title">Challenge Title</Label>
-                  <Input
-                    id="title"
-                    value={newChallenge.title}
-                    onChange={(e) => setNewChallenge({...newChallenge, title: e.target.value})}
-                    placeholder="Enter challenge title"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={newChallenge.description}
-                    onChange={(e) => setNewChallenge({...newChallenge, description: e.target.value})}
-                    placeholder="Describe your challenge"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="category">Category</Label>
-                  <Select value={newChallenge.category_id} onValueChange={(value) => setNewChallenge({...newChallenge, category_id: value})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.icon} {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="difficulty">Difficulty (1-5)</Label>
-                    <Select value={newChallenge.difficulty_level.toString()} onValueChange={(value) => setNewChallenge({...newChallenge, difficulty_level: parseInt(value)})}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {[1,2,3,4,5].map(level => (
-                          <SelectItem key={level} value={level.toString()}>{level}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="points">Points Reward</Label>
-                    <Input
-                      id="points"
-                      type="number"
-                      value={newChallenge.points_reward}
-                      onChange={(e) => setNewChallenge({...newChallenge, points_reward: parseInt(e.target.value) || 10})}
-                    />
-                  </div>
-                </div>
-                
-                <Button onClick={createCustomChallenge} className="w-full">
-                  Create Challenge
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+    <div className="min-h-screen bg-background">
+      {/* Hero Section - Strava style */}
+      <div className="relative bg-gradient-to-br from-primary/10 via-background to-accent/10 border-b border-border/40">
+        <div className="container mx-auto px-4 md:px-6 py-8 md:py-12">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight">
+                Challenges
+              </h1>
+              <p className="text-base md:text-lg text-muted-foreground max-w-2xl">
+                Push your limits, track your progress, and achieve your goals
+              </p>
+            </div>
+            
+            <Button size="lg" className="h-12 px-8 font-semibold shadow-lg" onClick={() => setShowCreateDialog(true)}>
+              <Plus className="w-5 h-5 mr-2" />
+              Create Challenge
+            </Button>
+          </div>
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-3 gap-4 mt-8 max-w-2xl">
+            <div className="text-center">
+              <div className="text-2xl md:text-3xl font-bold text-foreground">{challenges.length}</div>
+              <div className="text-xs md:text-sm text-muted-foreground uppercase tracking-wide">Total Challenges</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl md:text-3xl font-bold text-primary">{userChallenges.filter(uc => uc.status === 'in_progress').length}</div>
+              <div className="text-xs md:text-sm text-muted-foreground uppercase tracking-wide">Active</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl md:text-3xl font-bold text-success">{userChallenges.filter(uc => uc.status === 'completed').length}</div>
+              <div className="text-xs md:text-sm text-muted-foreground uppercase tracking-wide">Completed</div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Filters and View Toggle */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4" />
+      <div className="container mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-3">
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-full sm:w-[200px] h-11">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -490,88 +453,66 @@ const Challenges = () => {
               ))}
             </SelectContent>
           </Select>
+
+          <Tabs value={selectedType} onValueChange={(v) => setSelectedType(v as 'all' | 'company' | 'community')} className="w-full sm:w-auto">
+            <TabsList className="w-full sm:w-auto grid grid-cols-3">
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="company">Company</TabsTrigger>
+              <TabsTrigger value="community">Community</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
-        <Tabs value={selectedType} onValueChange={(v) => setSelectedType(v as 'all' | 'company' | 'community')} className="w-auto">
-          <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="company">Company</TabsTrigger>
-            <TabsTrigger value="community">Community</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        
-        <div className="flex items-center gap-1 ml-auto">
-          <Button
-            variant={viewMode === 'grid' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('grid')}
-          >
-            <Grid3X3 className="w-4 h-4" />
-          </Button>
-          <Button
-            variant={viewMode === 'list' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('list')}
-          >
-            <List className="w-4 h-4" />
-          </Button>
-        </div>
+        {/* Challenges Grid */}
+        {selectedType === 'all' ? (
+          <div className="space-y-10">
+            {companyChallenges.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <Trophy className="w-6 h-6 text-primary" />
+                  <h2 className="text-xl md:text-2xl font-bold">Company Challenges</h2>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
+                  {companyChallenges.map(renderChallengeCard)}
+                </div>
+              </div>
+            )}
+
+            {communityChallenges.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="w-6 h-6 text-primary" />
+                  <h2 className="text-xl md:text-2xl font-bold">Community Challenges</h2>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
+                  {communityChallenges.map(renderChallengeCard)}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
+            {filteredChallenges.map(renderChallengeCard)}
+          </div>
+        )}
+
+        {filteredChallenges.length === 0 && (
+          <div className="text-center py-12">
+            <div className="text-4xl mb-4">🎯</div>
+            <h3 className="text-xl font-semibold mb-2">No challenges found</h3>
+            <p className="text-muted-foreground mb-4">
+              {selectedCategory === 'all' 
+                ? "No challenges available yet" 
+                : `No challenges found in ${selectedCategory} category`
+              }
+            </p>
+            <Button onClick={() => setShowCreateDialog(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create the first challenge
+            </Button>
+          </div>
+        )}
       </div>
-
-      {/* Challenges Sections */}
-      {selectedType === 'all' ? (
-        <div className="space-y-8">
-          {/* Company Challenges Section */}
-          {companyChallenges.length > 0 && (
-            <div>
-              <h2 className="text-2xl font-bold mb-4">Company Challenges</h2>
-              <div className={viewMode === 'grid' 
-                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
-                : "space-y-4"
-              }>
-                {companyChallenges.map(renderChallengeCard)}
-              </div>
-            </div>
-          )}
-
-          {/* Community Challenges Section */}
-          {communityChallenges.length > 0 && (
-            <div>
-              <h2 className="text-2xl font-bold mb-4">Community Challenges</h2>
-              <div className={viewMode === 'grid' 
-                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
-                : "space-y-4"
-              }>
-                {communityChallenges.map(renderChallengeCard)}
-              </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className={viewMode === 'grid' 
-          ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
-          : "space-y-4"
-        }>
-          {filteredChallenges.map(renderChallengeCard)}
-        </div>
-      )}
-
-      {filteredChallenges.length === 0 && (
-        <div className="text-center py-12">
-          <div className="text-4xl mb-4">🎯</div>
-          <h3 className="text-xl font-semibold mb-2">No challenges found</h3>
-          <p className="text-muted-foreground mb-4">
-            {selectedCategory === 'all' 
-              ? "No challenges available yet" 
-              : `No challenges found in ${selectedCategory} category`
-            }
-          </p>
-          <Button onClick={() => setShowCreateDialog(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create the first challenge
-          </Button>
-        </div>
-      )}
 
       {/* Challenge Detail Dialog */}
       <ChallengeDetailDialog

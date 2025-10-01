@@ -1,19 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { useAuth } from '@/components/auth/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
-import { Link } from 'react-router-dom';
-import { 
-  Trophy, 
-  Target, 
-  Users, 
-  TrendingUp,
-  Zap,
-  Medal,
-  Star
-} from 'lucide-react';
+import { Trophy, Target, TrendingUp, Users, Zap, Award, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface Profile {
   username: string;
@@ -27,6 +20,10 @@ interface UserChallenge {
   status: string;
   challenges: {
     title: string;
+    description: string;
+    image_url: string | null;
+    points_reward: number;
+    difficulty_level: number;
     category_id: string;
     challenge_categories: {
       name: string;
@@ -37,6 +34,7 @@ interface UserChallenge {
 
 export default function Home() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [activeChallenges, setActiveChallenges] = useState<UserChallenge[]>([]);
   const [stats, setStats] = useState({
@@ -77,6 +75,10 @@ export default function Home() {
         status,
         challenges (
           title,
+          description,
+          image_url,
+          points_reward,
+          difficulty_level,
           category_id,
           challenge_categories (
             name,
@@ -138,130 +140,178 @@ export default function Home() {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-4 animate-fade-in max-w-2xl mx-auto md:max-w-none">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold mb-1">
-          Welcome back, {profile?.display_name || profile?.username || 'Challenger'}!
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Ready to take on challenges today?
-        </p>
+    <div className="min-h-screen bg-background">
+      {/* Hero Section - Strava-style */}
+      <div className="relative bg-gradient-to-br from-primary/10 via-background to-accent/10 border-b border-border/40">
+        <div className="container mx-auto px-4 md:px-6 py-8 md:py-12">
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-2">
+                Welcome back, {profile?.display_name || profile?.username}
+              </h1>
+              <p className="text-base md:text-lg text-muted-foreground">
+                Track your progress and achieve your goals
+              </p>
+            </div>
+
+            {/* Stats Row - Strava style */}
+            <div className="grid grid-cols-4 gap-4 max-w-4xl">
+              <div className="text-center p-4 rounded-lg bg-background/50 backdrop-blur-sm border border-border/40">
+                <div className="text-3xl md:text-4xl font-bold text-foreground mb-1">{stats.completed}</div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">Completed</div>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-background/50 backdrop-blur-sm border border-border/40">
+                <div className="text-3xl md:text-4xl font-bold text-primary mb-1">{stats.inProgress}</div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">Active</div>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-background/50 backdrop-blur-sm border border-border/40">
+                <div className="text-3xl md:text-4xl font-bold text-foreground mb-1">{profile?.total_points || 0}</div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">Points</div>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-background/50 backdrop-blur-sm border border-border/40">
+                <div className="text-3xl md:text-4xl font-bold text-foreground mb-1">{profile?.level || 1}</div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">Level</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Stats Cards - Mobile optimized */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="hover-lift">
-          <CardContent className="p-3 text-center">
-            <Trophy className="h-6 w-6 text-primary mx-auto mb-1" />
-            <div className="text-xl font-bold">{stats.completed}</div>
-            <div className="text-xs text-muted-foreground">Completed</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="hover-lift">
-          <CardContent className="p-3 text-center">
-            <Target className="h-6 w-6 text-accent mx-auto mb-1" />
-            <div className="text-xl font-bold">{stats.inProgress}</div>
-            <div className="text-xs text-muted-foreground">In Progress</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="hover-lift">
-          <CardContent className="p-3 text-center">
-            <Star className="h-6 w-6 text-secondary mx-auto mb-1" />
-            <div className="text-xl font-bold">{profile?.total_points || 0}</div>
-            <div className="text-xs text-muted-foreground">Points</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="hover-lift">
-          <CardContent className="p-3 text-center">
-            <Medal className="h-6 w-6 text-success mx-auto mb-1" />
-            <div className="text-xl font-bold">{profile?.level || 1}</div>
-            <div className="text-xs text-muted-foreground">Level</div>
-          </CardContent>
-        </Card>
-      </div>
+      <div className="container mx-auto px-4 md:px-6 py-6 md:py-8 space-y-8">
+        {/* Active Challenges - Activity Feed Style */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Zap className="w-6 h-6 text-primary" />
+              <h2 className="text-xl md:text-2xl font-bold">Active Challenges</h2>
+            </div>
+            {activeChallenges.length > 0 && (
+              <Button variant="ghost" onClick={() => navigate('/challenges')} className="text-sm">
+                View All
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            )}
+          </div>
 
-      {/* Active Challenges - Feed style */}
-      {activeChallenges.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <Zap className="h-5 w-5 text-primary" />
-            Your Active Challenges
-          </h2>
-          {activeChallenges.map((userChallenge) => (
-            <Card key={userChallenge.id} className="overflow-hidden">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  <span className="text-3xl flex-shrink-0">
-                    {userChallenge.challenges.challenge_categories?.icon || '🎯'}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold mb-1 leading-tight">{userChallenge.challenges.title}</h3>
-                    <div className="flex flex-wrap gap-1.5 mb-3">
-                      <Badge variant="outline" className="text-xs">
-                        {userChallenge.challenges.challenge_categories?.name}
-                      </Badge>
-                      <Badge 
-                        variant={userChallenge.status === 'completed' ? 'default' : 'secondary'}
-                        className="text-xs"
-                      >
-                        {userChallenge.status.replace('_', ' ')}
-                      </Badge>
+          {activeChallenges.length > 0 ? (
+            <div className="space-y-4">
+              {activeChallenges.map((userChallenge) => (
+                <Card key={userChallenge.id} className="overflow-hidden hover:shadow-lg transition-all border-border/40">
+                  <CardContent className="p-0">
+                    <div className="flex flex-col md:flex-row">
+                      {/* Image Section */}
+                      <div className="relative w-full md:w-48 h-48 md:h-auto overflow-hidden bg-muted flex-shrink-0">
+                        {userChallenge.challenges.image_url ? (
+                          <img 
+                            src={userChallenge.challenges.image_url} 
+                            alt={userChallenge.challenges.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-5xl">
+                            {userChallenge.challenges.challenge_categories?.icon || '🎯'}
+                          </div>
+                        )}
+                        <div className="absolute top-3 left-3">
+                          <Badge className="bg-background/90 backdrop-blur-sm text-foreground border-0">
+                            {userChallenge.challenges.challenge_categories?.name}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      {/* Content Section */}
+                      <div className="flex-1 p-5 md:p-6 space-y-4">
+                        <div>
+                          <h3 className="text-xl md:text-2xl font-bold mb-2">{userChallenge.challenges.title}</h3>
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {userChallenge.challenges.description}
+                          </p>
+                        </div>
+
+                        {/* Progress Section */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Progress</span>
+                            <span className="font-semibold">In Progress</span>
+                          </div>
+                          <Progress value={60} className="h-2" />
+                        </div>
+
+                        {/* Stats & Action */}
+                        <div className="flex items-center justify-between pt-2">
+                          <div className="flex items-center gap-4 text-sm">
+                            <div className="flex items-center gap-1">
+                              <Award className="w-4 h-4 text-primary" />
+                              <span className="font-semibold">{userChallenge.challenges.points_reward} pts</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Target className="w-4 h-4 text-muted-foreground" />
+                              <span className="text-muted-foreground">Level {userChallenge.challenges.difficulty_level}</span>
+                            </div>
+                          </div>
+                          <Button onClick={() => navigate('/challenges')} size="sm" className="font-semibold">
+                            Continue
+                            <ArrowRight className="w-4 h-4 ml-1" />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                    <Button variant="default" size="sm" className="w-full" asChild>
-                      <Link to="/challenges">Continue Challenge</Link>
-                    </Button>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="border-dashed border-2">
+              <CardContent className="text-center py-12">
+                <Target className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+                <h3 className="text-lg font-semibold mb-2">No active challenges</h3>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Start your first challenge and begin your journey
+                </p>
+                <Button size="lg" onClick={() => navigate('/challenges')} className="h-11 px-8 font-semibold">
+                  Browse Challenges
+                </Button>
               </CardContent>
             </Card>
-          ))}
+          )}
         </div>
-      )}
 
-      {activeChallenges.length === 0 && (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <Target className="h-16 w-16 text-muted-foreground mx-auto mb-3 opacity-50" />
-            <h3 className="text-lg font-bold mb-2">No active challenges</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Start your challenge journey today!
-            </p>
-            <Button variant="default" size="lg" className="w-full md:w-auto" asChild>
-              <Link to="/challenges">Browse Challenges</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Quick Actions - Full width on mobile */}
-      <div className="grid md:grid-cols-2 gap-3">
-        <Link to="/challenges" className="block">
-          <Card className="hover-lift cursor-pointer">
-            <CardContent className="p-4 text-center">
-              <Trophy className="h-10 w-10 text-primary mx-auto mb-2" />
-              <h3 className="text-base font-bold mb-1">Browse Challenges</h3>
-              <p className="text-xs text-muted-foreground">
-                Discover new challenges
-              </p>
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card className="group hover:shadow-lg hover:border-primary/50 transition-all cursor-pointer" onClick={() => navigate('/challenges')}>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Trophy className="w-7 h-7 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-lg mb-1">Explore Challenges</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Discover new ways to push your limits
+                  </p>
+                </div>
+                <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+              </div>
             </CardContent>
           </Card>
-        </Link>
-        
-        <Link to="/community" className="block">
-          <Card className="hover-lift cursor-pointer">
-            <CardContent className="p-4 text-center">
-              <Users className="h-10 w-10 text-secondary mx-auto mb-2" />
-              <h3 className="text-base font-bold mb-1">Join Community</h3>
-              <p className="text-xs text-muted-foreground">
-                Share your progress
-              </p>
+
+          <Card className="group hover:shadow-lg hover:border-primary/50 transition-all cursor-pointer" onClick={() => navigate('/community')}>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Users className="w-7 h-7 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-lg mb-1">Community Feed</h3>
+                  <p className="text-sm text-muted-foreground">
+                    See what others are achieving
+                  </p>
+                </div>
+                <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+              </div>
             </CardContent>
           </Card>
-        </Link>
+        </div>
       </div>
     </div>
   );
