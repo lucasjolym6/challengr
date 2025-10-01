@@ -8,10 +8,10 @@ const Community = () => {
   const [activeTab, setActiveTab] = useState<'feed' | 'leaderboard'>('feed');
 
   return (
-    <div className="h-[calc(100vh-4rem)] overflow-hidden bg-gradient-to-b from-[#FFF7F2] via-white to-[#FFF2EC]">
-      {/* Navigation Tabs - Compact */}
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="h-full flex flex-col">
-        <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mt-2 mb-0 bg-white/80 backdrop-blur">
+    <div className="fixed inset-0 top-16 overflow-hidden bg-gradient-to-b from-[#FFF7F2] via-white to-[#FFF2EC]">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="h-full">
+        {/* Fixed Header Tabs */}
+        <TabsList className="fixed top-16 left-1/2 -translate-x-1/2 z-40 grid w-full max-w-md grid-cols-2 bg-white/80 backdrop-blur shadow-lg">
           <TabsTrigger value="feed" className="gap-2">
             <MessageSquare className="w-4 h-4" />
             Feed
@@ -22,11 +22,11 @@ const Community = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="feed" className="flex-1 mt-0 overflow-hidden">
+        <TabsContent value="feed" className="h-full pt-16">
           <ChallengeFeed />
         </TabsContent>
 
-        <TabsContent value="leaderboard" className="flex-1 mt-0 overflow-hidden">
+        <TabsContent value="leaderboard" className="h-full pt-16">
           <CommunityStats />
         </TabsContent>
       </Tabs>

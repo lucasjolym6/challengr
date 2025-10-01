@@ -446,8 +446,8 @@ const ChallengeFeed: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center py-4">
-        <div className="w-[90%] max-w-lg h-[55vh] bg-gradient-to-br from-[#FF7E5F] via-[#FFB88C] to-[#FFC7A3] rounded-3xl animate-pulse shadow-2xl opacity-30" />
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+        <div className="w-[90vw] max-w-2xl h-[70vh] bg-gradient-to-br from-[#FF7E5F] via-[#FFB88C] to-[#FFC7A3] rounded-3xl animate-pulse shadow-2xl opacity-30" />
       </div>
     );
   }
@@ -470,7 +470,7 @@ const ChallengeFeed: React.FC = () => {
   const progress = ((currentIndex + 1) / sortedPosts.length) * 100;
 
   return (
-    <div className="relative h-full flex flex-col overflow-hidden">
+    <div className="relative h-full overflow-hidden">
       <style>{`
         @keyframes heartPop {
           0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
@@ -479,8 +479,8 @@ const ChallengeFeed: React.FC = () => {
         }
       `}</style>
 
-      {/* View Mode Toggle */}
-      <div className="flex items-center justify-center gap-3 py-3 px-4">
+      {/* Fixed View Mode Toggle */}
+      <div className="fixed top-[108px] left-1/2 -translate-x-1/2 z-30 flex items-center justify-center gap-3">
         <Button
           variant={viewMode === 'trending' ? 'default' : 'outline'}
           size="sm"
@@ -507,8 +507,8 @@ const ChallengeFeed: React.FC = () => {
         </Button>
       </div>
 
-      {/* Main Card Container */}
-      <div className="flex-1 flex items-center justify-center px-4 pb-24 relative">
+      {/* Fixed Card Container */}
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
         {/* Swipe Hint Ghost Arrows */}
         {showSwipeHint && (
           <>
@@ -542,7 +542,7 @@ const ChallengeFeed: React.FC = () => {
             scale,
             touchAction: 'none',
           }}
-          className="w-[90%] max-w-lg h-[55vh] cursor-grab active:cursor-grabbing"
+          className="w-[90vw] max-w-2xl h-[70vh] cursor-grab active:cursor-grabbing"
           onDoubleClick={() => handleDoubleTap(currentPost.id)}
         >
           <Card className="w-full h-full rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-[#FF8A4C] via-[#FFB08A] to-[#FFD0B8] border-0 relative flex flex-col hover:shadow-[0_20px_60px_-15px_rgba(255,138,76,0.5)] transition-shadow duration-300">
@@ -691,27 +691,25 @@ const ChallengeFeed: React.FC = () => {
         </animated.div>
       </div>
 
-      {/* Navigation Arrows - Bottom Fixed */}
-      <div className="fixed bottom-20 left-0 right-0 z-30 flex items-center justify-center gap-4 pointer-events-none">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={prevCard}
-          disabled={currentIndex === 0}
-          className="w-14 h-14 rounded-full shadow-2xl bg-white/95 hover:bg-white backdrop-blur hover:scale-110 transition-all disabled:opacity-0 pointer-events-auto border-2 border-orange-200"
-        >
-          <ChevronLeft className="w-6 h-6 text-orange-600" />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={nextCard}
-          disabled={currentIndex === sortedPosts.length - 1}
-          className="w-14 h-14 rounded-full shadow-2xl bg-white/95 hover:bg-white backdrop-blur hover:scale-110 transition-all disabled:opacity-0 pointer-events-auto border-2 border-orange-200"
-        >
-          <ChevronRight className="w-6 h-6 text-orange-600" />
-        </Button>
-      </div>
+      {/* Navigation Arrows - Side Fixed */}
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={prevCard}
+        disabled={currentIndex === 0}
+        className="fixed left-4 md:left-8 top-1/2 -translate-y-1/2 z-30 w-14 h-14 rounded-full shadow-2xl bg-white/95 hover:bg-white backdrop-blur hover:scale-110 transition-all disabled:opacity-30 disabled:pointer-events-none border-2 border-orange-200"
+      >
+        <ChevronLeft className="w-6 h-6 text-orange-600" />
+      </Button>
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={nextCard}
+        disabled={currentIndex === sortedPosts.length - 1}
+        className="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 z-30 w-14 h-14 rounded-full shadow-2xl bg-white/95 hover:bg-white backdrop-blur hover:scale-110 transition-all disabled:opacity-30 disabled:pointer-events-none border-2 border-orange-200"
+      >
+        <ChevronRight className="w-6 h-6 text-orange-600" />
+      </Button>
 
       {/* Comments Modal */}
       {showComments && (
