@@ -17,6 +17,15 @@ import { Plus, Filter, Trophy, Target, TrendingUp } from "lucide-react";
 import ChallengeDetailDialog from "@/components/challenges/ChallengeDetailDialog";
 import { CreateChallengeDialog } from "@/components/challenges/CreateChallengeDialog";
 
+// Import category images
+import sportsImg from "@/assets/category-sports.jpg";
+import drawingImg from "@/assets/category-drawing.jpg";
+import musicImg from "@/assets/category-music.jpg";
+import cookingImg from "@/assets/category-cooking.jpg";
+import writingImg from "@/assets/category-writing.jpg";
+import codingImg from "@/assets/category-coding.jpg";
+import gardeningImg from "@/assets/category-gardening.jpg";
+
 interface Challenge {
   id: string;
   title: string;
@@ -237,6 +246,19 @@ const Challenges = () => {
     }
   };
 
+  const getCategoryImage = (categoryName: string): string => {
+    const categoryImages: { [key: string]: string } = {
+      'Sports': sportsImg,
+      'Drawing': drawingImg,
+      'Music': musicImg,
+      'Cooking': cookingImg,
+      'Writing': writingImg,
+      'Coding': codingImg,
+      'Gardening': gardeningImg
+    };
+    return categoryImages[categoryName] || sportsImg;
+  };
+
   const filteredChallenges = challenges.filter(c => {
     const categoryMatch = selectedCategory === 'all' || c.challenge_categories?.name === selectedCategory;
     const typeMatch = selectedType === 'all' || c.type === selectedType;
@@ -265,20 +287,12 @@ const Challenges = () => {
       >
         {/* Challenge Image - Strava-style large banner */}
         <div className="relative h-56 md:h-64 w-full overflow-hidden bg-muted">
-          {challenge.image_url ? (
-            <>
-              <img 
-                src={challenge.image_url} 
-                alt={challenge.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-            </>
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-              <Target className="w-20 h-20 text-primary/40" />
-            </div>
-          )}
+          <img 
+            src={challenge.image_url || getCategoryImage(challenge.challenge_categories?.name || '')} 
+            alt={challenge.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
           
           {/* Category badge overlaid on image */}
           <div className="absolute top-4 left-4">

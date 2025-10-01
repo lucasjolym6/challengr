@@ -8,6 +8,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { Trophy, Target, TrendingUp, Users, Zap, Award, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+// Import category images
+import sportsImg from "@/assets/category-sports.jpg";
+import drawingImg from "@/assets/category-drawing.jpg";
+import musicImg from "@/assets/category-music.jpg";
+import cookingImg from "@/assets/category-cooking.jpg";
+import writingImg from "@/assets/category-writing.jpg";
+import codingImg from "@/assets/category-coding.jpg";
+import gardeningImg from "@/assets/category-gardening.jpg";
+
 interface Profile {
   username: string;
   display_name: string;
@@ -139,6 +148,19 @@ export default function Home() {
     return variants[status] || 'default';
   };
 
+  const getCategoryImage = (categoryName: string): string => {
+    const categoryImages: { [key: string]: string } = {
+      'Sports': sportsImg,
+      'Drawing': drawingImg,
+      'Music': musicImg,
+      'Cooking': cookingImg,
+      'Writing': writingImg,
+      'Coding': codingImg,
+      'Gardening': gardeningImg
+    };
+    return categoryImages[categoryName] || sportsImg;
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section - Strava-style */}
@@ -201,17 +223,11 @@ export default function Home() {
                     <div className="flex flex-col md:flex-row">
                       {/* Image Section */}
                       <div className="relative w-full md:w-48 h-48 md:h-auto overflow-hidden bg-muted flex-shrink-0">
-                        {userChallenge.challenges.image_url ? (
-                          <img 
-                            src={userChallenge.challenges.image_url} 
-                            alt={userChallenge.challenges.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-5xl">
-                            {userChallenge.challenges.challenge_categories?.icon || '🎯'}
-                          </div>
-                        )}
+                        <img 
+                          src={userChallenge.challenges.image_url || getCategoryImage(userChallenge.challenges.challenge_categories?.name || '')} 
+                          alt={userChallenge.challenges.title}
+                          className="w-full h-full object-cover"
+                        />
                         <div className="absolute top-3 left-3">
                           <Badge className="bg-background/90 backdrop-blur-sm text-foreground border-0">
                             {userChallenge.challenges.challenge_categories?.name}
