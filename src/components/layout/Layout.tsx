@@ -28,7 +28,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      <main className="pb-20 md:pb-0 md:ml-64">
+      <main className="pt-14 pb-20 md:pt-0 md:pb-0 md:ml-64">
         {children}
       </main>
     </div>

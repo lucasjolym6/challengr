@@ -557,449 +557,352 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6 animate-pulse">
-        <div className="h-8 bg-muted rounded w-64"></div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="h-48 bg-muted rounded"></div>
-          <div className="h-48 bg-muted rounded"></div>
-          <div className="h-48 bg-muted rounded"></div>
+      <div className="p-4 md:p-6 space-y-4 animate-pulse">
+        <div className="h-24 w-24 bg-muted rounded-full mx-auto"></div>
+        <div className="h-6 bg-muted rounded w-32 mx-auto"></div>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="h-16 bg-muted rounded"></div>
+          <div className="h-16 bg-muted rounded"></div>
+          <div className="h-16 bg-muted rounded"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
-      {/* Profile Header */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row items-start gap-6">
-            <div className="relative">
-              <Avatar className="h-24 w-24">
-                <AvatarImage src={profile?.avatar_url || undefined} />
-                <AvatarFallback className="text-xl">
-                  {profile?.display_name?.charAt(0) || profile?.username?.charAt(0) || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarUpload}
-                className="hidden"
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingAvatar}
-              >
-                <Camera className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <div className="flex-1 space-y-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h1 className="text-2xl font-bold">{profile?.display_name || profile?.username}</h1>
-                  <p className="text-muted-foreground">@{profile?.username}</p>
-                  {profile?.bio && (
-                    <p className="mt-2 text-muted-foreground">{profile.bio}</p>
-                  )}
-                </div>
-                
-                <Dialog open={isEditing} onOpenChange={setIsEditing}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit Profile
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>Edit Profile</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="display_name">Display Name</Label>
-                        <Input
-                          id="display_name"
-                          value={editForm.display_name}
-                          onChange={(e) => setEditForm({...editForm, display_name: e.target.value})}
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor="bio">Bio</Label>
-                        <Textarea
-                          id="bio"
-                          value={editForm.bio}
-                          onChange={(e) => setEditForm({...editForm, bio: e.target.value})}
-                          placeholder="Tell us about yourself..."
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label>Skills & Interests</Label>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {editForm.skills.map((skill) => (
-                            <Badge 
-                              key={skill} 
-                              variant="secondary" 
-                              className="cursor-pointer"
-                              onClick={() => removeSkill(skill)}
-                            >
-                              {skill} ×
-                            </Badge>
-                          ))}
-                        </div>
-                        <div className="flex gap-2 mt-2">
-                          <Input
-                            placeholder="Add a skill..."
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                addSkill(e.currentTarget.value);
-                                e.currentTarget.value = '';
-                              }
-                            }}
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="flex gap-2">
-                        <Button onClick={updateProfile} className="flex-1">
-                          Save Changes
-                        </Button>
-                        <Button variant="outline" onClick={() => setIsEditing(false)}>
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-
-              {/* Skills display */}
-              {profile?.skills && profile.skills.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {profile.skills.map((skill) => (
-                    <Badge key={skill} variant="secondary">
-                      {skill}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-
-              {/* Level and Points */}
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <Crown className="h-5 w-5 text-primary" />
-                  <span className="text-sm">Level {profile?.level || 1}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Trophy className="h-5 w-5 text-primary" />
-                  <span className="text-sm">{profile?.total_points || 0} Points</span>
-                </div>
-              </div>
-            </div>
+    <div className="max-w-2xl mx-auto md:max-w-none">
+      {/* Mobile-first Profile Header */}
+      <div className="p-4 md:p-6 space-y-4">
+        {/* Profile Photo - Centered on Mobile */}
+        <div className="flex flex-col items-center md:flex-row md:items-start gap-4">
+          <div className="relative">
+            <Avatar className="h-20 w-20 md:h-24 md:w-24">
+              <AvatarImage src={profile?.avatar_url || undefined} />
+              <AvatarFallback className="text-xl md:text-2xl">
+                {profile?.display_name?.charAt(0) || profile?.username?.charAt(0) || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarUpload}
+              className="hidden"
+            />
+            <Button
+              size="icon"
+              variant="outline"
+              className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full p-0 md:h-8 md:w-8"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingAvatar}
+            >
+              <Camera className="h-3 w-3 md:h-4 md:w-4" />
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+          
+          {/* Profile Info */}
+          <div className="flex-1 text-center md:text-left space-y-2">
+            <h1 className="text-xl md:text-2xl font-bold">
+              {profile?.display_name || profile?.username}
+            </h1>
+            <p className="text-sm text-muted-foreground">@{profile?.username}</p>
+            
+            <Dialog open={isEditing} onOpenChange={setIsEditing}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="w-full md:w-auto">
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Profile
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Edit Profile</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="display_name">Display Name</Label>
+                    <Input
+                      id="display_name"
+                      value={editForm.display_name}
+                      onChange={(e) => setEditForm({...editForm, display_name: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="bio">Bio</Label>
+                    <Textarea
+                      id="bio"
+                      value={editForm.bio}
+                      onChange={(e) => setEditForm({...editForm, bio: e.target.value})}
+                      placeholder="Tell us about yourself..."
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label>Skills & Interests</Label>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {editForm.skills.map((skill) => (
+                        <Badge 
+                          key={skill} 
+                          variant="secondary" 
+                          className="cursor-pointer"
+                          onClick={() => removeSkill(skill)}
+                        >
+                          {skill} ×
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                      <Input
+                        placeholder="Add a skill..."
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            addSkill(e.currentTarget.value);
+                            e.currentTarget.value = '';
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Button onClick={updateProfile} className="flex-1">
+                      Save Changes
+                    </Button>
+                    <Button variant="outline" onClick={() => setIsEditing(false)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center mb-2">
-              <CheckCircle className="h-6 w-6 text-green-600" />
-            </div>
-            <div className="text-2xl font-bold">{stats.completed}</div>
-            <div className="text-sm text-muted-foreground">Completed</div>
-          </CardContent>
-        </Card>
+            {profile?.bio && (
+              <p className="text-sm text-muted-foreground">{profile.bio}</p>
+            )}
 
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center mb-2">
-              <TrendingUp className="h-6 w-6 text-blue-600" />
-            </div>
-            <div className="text-2xl font-bold">{stats.inProgress}</div>
-            <div className="text-sm text-muted-foreground">In Progress</div>
-          </CardContent>
-        </Card>
+            {/* Skills */}
+            {profile?.skills && profile.skills.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 justify-center md:justify-start">
+                {profile.skills.map((skill) => (
+                  <Badge key={skill} variant="secondary" className="text-xs">
+                    {skill}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
 
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center mb-2">
-              <Target className="h-6 w-6 text-orange-600" />
-            </div>
-            <div className="text-2xl font-bold">{badges.length}</div>
-            <div className="text-sm text-muted-foreground">Badges</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center mb-2">
-              <Users className="h-6 w-6 text-purple-600" />
-            </div>
-            <div className="text-2xl font-bold">{friends.length}</div>
-            <div className="text-sm text-muted-foreground">Friends</div>
-          </CardContent>
-        </Card>
+        {/* Stats - 3 Columns (Instagram/Strava style) */}
+        <div className="grid grid-cols-3 gap-4 py-4 border-y border-border">
+          <div className="text-center">
+            <div className="text-xl md:text-2xl font-bold">{stats.completed}</div>
+            <div className="text-xs text-muted-foreground">Challenges</div>
+          </div>
+          
+          <div className="text-center">
+            <div className="text-xl md:text-2xl font-bold">{profile?.total_points || 0}</div>
+            <div className="text-xs text-muted-foreground">Points</div>
+          </div>
+          
+          <div className="text-center">
+            <div className="text-xl md:text-2xl font-bold">{friends.length}</div>
+            <div className="text-xs text-muted-foreground">Friends</div>
+          </div>
+        </div>
       </div>
 
-      {/* Tabs for different sections */}
-      <Tabs defaultValue="progress" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="progress">Progress</TabsTrigger>
-          <TabsTrigger value="history">History</TabsTrigger>
-          <TabsTrigger value="badges">Badges</TabsTrigger>
-          <TabsTrigger value="friends">Friends</TabsTrigger>
+      {/* Tabs - Mobile optimized */}
+      <Tabs defaultValue="completed" className="px-4 md:px-6 pb-4">
+        <TabsList className="grid w-full grid-cols-3 mb-4">
+          <TabsTrigger value="completed" className="text-xs md:text-sm">Completed</TabsTrigger>
+          <TabsTrigger value="badges" className="text-xs md:text-sm">Badges</TabsTrigger>
+          <TabsTrigger value="friends" className="text-xs md:text-sm">Friends</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="progress" className="space-y-6">
-          {/* Weekly Progress */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Weekly Progress
-              </CardTitle>
-              <CardDescription>
-                Complete {stats.weeklyGoal} challenges this week
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>{stats.weeklyProgress} / {stats.weeklyGoal} completed</span>
-                  <span>{Math.round((stats.weeklyProgress / stats.weeklyGoal) * 100)}%</span>
-                </div>
-                <Progress value={(stats.weeklyProgress / stats.weeklyGoal) * 100} />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Monthly Progress */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Monthly Progress
-              </CardTitle>
-              <CardDescription>
-                Complete {stats.monthlyGoal} challenges this month
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>{stats.monthlyProgress} / {stats.monthlyGoal} completed</span>
-                  <span>{Math.round((stats.monthlyProgress / stats.monthlyGoal) * 100)}%</span>
-                </div>
-                <Progress value={(stats.monthlyProgress / stats.monthlyGoal) * 100} />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="history">
-          <Card>
-            <CardHeader>
-              <CardTitle>Challenge History</CardTitle>
-              <CardDescription>Your recently completed challenges</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {completedChallenges.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">
-                    No completed challenges yet. Start your first challenge!
-                  </p>
-                ) : (
-                  completedChallenges.map((challenge) => (
-                    <div key={challenge.id} className="flex items-start gap-4 p-4 border rounded-lg">
-                      <div className="text-2xl">
-                        {challenge.challenges.challenge_categories?.icon || '🎯'}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold">{challenge.challenges.title}</h3>
-                        <p className="text-sm text-muted-foreground mb-2">
-                          {challenge.challenges.description}
-                        </p>
-                        {challenge.proof_text && (
-                          <p className="text-sm italic mb-2">"{challenge.proof_text}"</p>
-                        )}
-                        {challenge.proof_image_url && (
-                          <img 
-                            src={challenge.proof_image_url} 
-                            alt="Challenge proof" 
-                            className="max-w-sm max-h-32 object-cover rounded"
-                          />
-                        )}
-                        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                          <span>Completed: {new Date(challenge.completed_at).toLocaleDateString()}</span>
-                          <span>+{challenge.challenges.points_reward} points</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))
+        <TabsContent value="completed" className="space-y-3">
+          {completedChallenges.length === 0 ? (
+            <div className="text-center py-12">
+              <Trophy className="h-16 w-16 text-muted-foreground mx-auto mb-3 opacity-50" />
+              <p className="text-sm text-muted-foreground">
+                No completed challenges yet
+              </p>
+            </div>
+          ) : (
+            completedChallenges.map((challenge) => (
+              <Card key={challenge.id} className="overflow-hidden">
+                {challenge.proof_image_url && (
+                  <div className="relative h-64 md:h-80 bg-muted">
+                    <img 
+                      src={challenge.proof_image_url} 
+                      alt="Challenge proof" 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
                 )}
-              </div>
-            </CardContent>
-          </Card>
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3 mb-2">
+                    <span className="text-2xl flex-shrink-0">
+                      {challenge.challenges.challenge_categories?.icon || '🎯'}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold leading-tight mb-1">
+                        {challenge.challenges.title}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(challenge.completed_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <Badge variant="default" className="text-xs">
+                      +{challenge.challenges.points_reward}
+                    </Badge>
+                  </div>
+                  {challenge.proof_text && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      {challenge.proof_text}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            ))
+          )}
         </TabsContent>
 
         <TabsContent value="badges">
-          <Card>
-            <CardHeader>
-              <CardTitle>Earned Badges</CardTitle>
-              <CardDescription>Badges you've unlocked through challenges</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {badges.length === 0 ? (
-                  <div className="col-span-full text-center text-muted-foreground py-8">
-                    No badges earned yet. Complete challenges to earn badges!
-                  </div>
-                ) : (
-                  badges.map((badge) => (
-                    <div key={badge.id} className="text-center p-4 border rounded-lg">
-                      <div className="text-3xl mb-2">{badge.icon}</div>
-                      <h3 className="font-semibold text-sm">{badge.name}</h3>
-                      <p className="text-xs text-muted-foreground mt-1">{badge.description}</p>
-                      {badge.earned_at && (
-                        <p className="text-xs text-green-600 mt-2">
-                          Earned {new Date(badge.earned_at).toLocaleDateString()}
-                        </p>
-                      )}
-                    </div>
-                  ))
-                )}
+          <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+            {badges.length === 0 ? (
+              <div className="col-span-full text-center py-12">
+                <Award className="h-16 w-16 text-muted-foreground mx-auto mb-3 opacity-50" />
+                <p className="text-sm text-muted-foreground">
+                  No badges earned yet
+                </p>
               </div>
-            </CardContent>
-          </Card>
+            ) : (
+              badges.map((badge) => (
+                <Card key={badge.id} className="text-center p-3">
+                  <div className="text-3xl mb-1">{badge.icon}</div>
+                  <h3 className="font-bold text-xs">{badge.name}</h3>
+                </Card>
+              ))
+            )}
+          </div>
         </TabsContent>
 
-        <TabsContent value="friends">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Add Friends */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <UserPlus className="h-5 w-5" />
-                  Add Friends
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Search by username or name..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && searchFriends()}
-                  />
-                  <Button onClick={searchFriends}>
-                    <Search className="h-4 w-4" />
-                  </Button>
-                </div>
+        <TabsContent value="friends" className="space-y-4">
+          {/* Search Friends */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex gap-2 mb-4">
+                <Input
+                  placeholder="Search friends..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && searchFriends()}
+                  className="text-sm"
+                />
+                <Button onClick={searchFriends} size="sm">
+                  <Search className="h-4 w-4" />
+                </Button>
+              </div>
 
-                {searchResults.length > 0 && (
-                  <div className="space-y-2">
-                    {searchResults.map((result) => (
-                      <div key={result.id} className="flex items-center justify-between p-2 border rounded">
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={result.avatar_url || undefined} />
-                            <AvatarFallback>{result.display_name?.charAt(0) || result.username?.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="text-sm font-medium">{result.display_name || result.username}</p>
-                            <p className="text-xs text-muted-foreground">@{result.username}</p>
-                          </div>
-                        </div>
-                        <Button size="sm" onClick={() => sendFriendRequest(result.user_id)}>
-                          Add
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Friend Requests */}
-                {friendRequests.length > 0 && (
-                  <div className="space-y-2">
-                    <h4 className="font-medium">Friend Requests</h4>
-                    {friendRequests.map((request) => (
-                      <div key={request.id} className="flex items-center justify-between p-2 border rounded">
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={request.profiles?.avatar_url || undefined} />
-                            <AvatarFallback>
-                              {request.profiles?.display_name?.charAt(0) || request.profiles?.username?.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="text-sm font-medium">
-                              {request.profiles?.display_name || request.profiles?.username}
-                            </p>
-                            <p className="text-xs text-muted-foreground">@{request.profiles?.username}</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button size="sm" onClick={() => respondToFriendRequest(request.id, 'accepted')}>
-                            Accept
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => respondToFriendRequest(request.id, 'declined')}>
-                            Decline
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Friends List */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Friends ({friends.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+              {searchResults.length > 0 && (
                 <div className="space-y-2">
-                  {friends.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">
-                      No friends yet. Search and add some friends!
-                    </p>
-                  ) : (
-                    friends.map((friend) => (
-                      <div key={friend.id} className="flex items-center gap-2 p-2 border rounded">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={friend.profiles?.avatar_url || undefined} />
-                          <AvatarFallback>
-                            {friend.profiles?.display_name?.charAt(0) || friend.profiles?.username?.charAt(0)}
+                  {searchResults.map((result) => (
+                    <div key={result.id} className="flex items-center justify-between py-2">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={result.avatar_url || undefined} />
+                          <AvatarFallback className="text-xs">
+                            {result.display_name?.charAt(0) || result.username?.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">
-                            {friend.profiles?.display_name || friend.profiles?.username}
-                          </p>
-                          <p className="text-xs text-muted-foreground">@{friend.profiles?.username}</p>
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          Level {friend.profiles?.level || 1}
+                        <div>
+                          <p className="text-sm font-semibold">{result.display_name || result.username}</p>
+                          <p className="text-xs text-muted-foreground">@{result.username}</p>
                         </div>
                       </div>
-                    ))
-                  )}
+                      <Button size="sm" onClick={() => sendFriendRequest(result.user_id)}>
+                        Add
+                      </Button>
+                    </div>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Friend Requests */}
+          {friendRequests.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold px-1">Friend Requests</h3>
+              {friendRequests.map((request) => (
+                <Card key={request.id}>
+                  <CardContent className="p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={request.profiles?.avatar_url || undefined} />
+                          <AvatarFallback className="text-xs">
+                            {request.profiles?.display_name?.charAt(0) || request.profiles?.username?.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-semibold">
+                            {request.profiles?.display_name || request.profiles?.username}
+                          </p>
+                          <p className="text-xs text-muted-foreground">@{request.profiles?.username}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button size="sm" onClick={() => respondToFriendRequest(request.id, 'accepted')}>
+                          Accept
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => respondToFriendRequest(request.id, 'declined')}>
+                          Decline
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {/* Friends List */}
+          <div className="space-y-2">
+            {friends.length === 0 ? (
+              <div className="text-center py-12">
+                <Users className="h-16 w-16 text-muted-foreground mx-auto mb-3 opacity-50" />
+                <p className="text-sm text-muted-foreground">
+                  No friends yet
+                </p>
+              </div>
+            ) : (
+              friends.map((friend) => (
+                <Card key={friend.id}>
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={friend.profiles?.avatar_url || undefined} />
+                        <AvatarFallback className="text-xs">
+                          {friend.profiles?.display_name?.charAt(0) || friend.profiles?.username?.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate">
+                          {friend.profiles?.display_name || friend.profiles?.username}
+                        </p>
+                        <p className="text-xs text-muted-foreground">@{friend.profiles?.username}</p>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        Lv. {friend.profiles?.level || 1}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </TabsContent>
       </Tabs>

@@ -138,117 +138,114 @@ export default function Home() {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-6 animate-fade-in">
+    <div className="p-4 md:p-6 space-y-4 animate-fade-in max-w-2xl mx-auto md:max-w-none">
       {/* Header */}
-      <div className="text-center md:text-left">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2">
-          Welcome back, {profile?.display_name || profile?.username || 'Challenger'}! 👋
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold mb-1">
+          Welcome back, {profile?.display_name || profile?.username || 'Challenger'}!
         </h1>
-        <p className="text-muted-foreground text-lg">
-          Ready to take on some challenges today?
+        <p className="text-sm text-muted-foreground">
+          Ready to take on challenges today?
         </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Stats Cards - Mobile optimized */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="hover-lift">
-          <CardContent className="p-4 text-center">
-            <Trophy className="h-8 w-8 text-primary mx-auto mb-2" />
-            <div className="text-2xl font-bold text-primary">{stats.completed}</div>
-            <div className="text-sm text-muted-foreground">Completed</div>
+          <CardContent className="p-3 text-center">
+            <Trophy className="h-6 w-6 text-primary mx-auto mb-1" />
+            <div className="text-xl font-bold">{stats.completed}</div>
+            <div className="text-xs text-muted-foreground">Completed</div>
           </CardContent>
         </Card>
         
         <Card className="hover-lift">
-          <CardContent className="p-4 text-center">
-            <Target className="h-8 w-8 text-accent mx-auto mb-2" />
-            <div className="text-2xl font-bold text-accent">{stats.inProgress}</div>
-            <div className="text-sm text-muted-foreground">In Progress</div>
+          <CardContent className="p-3 text-center">
+            <Target className="h-6 w-6 text-accent mx-auto mb-1" />
+            <div className="text-xl font-bold">{stats.inProgress}</div>
+            <div className="text-xs text-muted-foreground">In Progress</div>
           </CardContent>
         </Card>
         
         <Card className="hover-lift">
-          <CardContent className="p-4 text-center">
-            <Star className="h-8 w-8 text-secondary mx-auto mb-2" />
-            <div className="text-2xl font-bold text-secondary">{profile?.total_points || 0}</div>
-            <div className="text-sm text-muted-foreground">Points</div>
+          <CardContent className="p-3 text-center">
+            <Star className="h-6 w-6 text-secondary mx-auto mb-1" />
+            <div className="text-xl font-bold">{profile?.total_points || 0}</div>
+            <div className="text-xs text-muted-foreground">Points</div>
           </CardContent>
         </Card>
         
         <Card className="hover-lift">
-          <CardContent className="p-4 text-center">
-            <Medal className="h-8 w-8 text-success mx-auto mb-2" />
-            <div className="text-2xl font-bold text-success">{profile?.level || 1}</div>
-            <div className="text-sm text-muted-foreground">Level</div>
+          <CardContent className="p-3 text-center">
+            <Medal className="h-6 w-6 text-success mx-auto mb-1" />
+            <div className="text-xl font-bold">{profile?.level || 1}</div>
+            <div className="text-xs text-muted-foreground">Level</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Active Challenges */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      {/* Active Challenges - Feed style */}
+      {activeChallenges.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-bold flex items-center gap-2">
             <Zap className="h-5 w-5 text-primary" />
             Your Active Challenges
-          </CardTitle>
-          <CardDescription>
-            Keep the momentum going with these challenges
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {activeChallenges.length > 0 ? (
-            <div className="space-y-3">
-              {activeChallenges.map((userChallenge) => (
-                <div
-                  key={userChallenge.id}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">
-                      {userChallenge.challenges.challenge_categories?.icon || '🎯'}
-                    </span>
-                    <div>
-                      <h4 className="font-medium">{userChallenge.challenges.title}</h4>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant={getCategoryVariant(userChallenge.challenges.challenge_categories?.name)}>
-                          {userChallenge.challenges.challenge_categories?.name}
-                        </Badge>
-                        <Badge variant={getStatusVariant(userChallenge.status)}>
-                          {userChallenge.status.replace('_', ' ')}
-                        </Badge>
-                      </div>
+          </h2>
+          {activeChallenges.map((userChallenge) => (
+            <Card key={userChallenge.id} className="overflow-hidden">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl flex-shrink-0">
+                    {userChallenge.challenges.challenge_categories?.icon || '🎯'}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold mb-1 leading-tight">{userChallenge.challenges.title}</h3>
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      <Badge variant="outline" className="text-xs">
+                        {userChallenge.challenges.challenge_categories?.name}
+                      </Badge>
+                      <Badge 
+                        variant={userChallenge.status === 'completed' ? 'default' : 'secondary'}
+                        className="text-xs"
+                      >
+                        {userChallenge.status.replace('_', ' ')}
+                      </Badge>
                     </div>
+                    <Button variant="default" size="sm" className="w-full" asChild>
+                      <Link to="/challenges">Continue Challenge</Link>
+                    </Button>
                   </div>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link to="/challenges">View</Link>
-                  </Button>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">No active challenges</h3>
-              <p className="text-muted-foreground mb-4">
-                Start your challenge journey today!
-              </p>
-              <Button variant="gradient" size="lg" asChild>
-                <Link to="/challenges">Browse Challenges</Link>
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
-      {/* Quick Actions */}
-      <div className="grid md:grid-cols-2 gap-4">
+      {activeChallenges.length === 0 && (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <Target className="h-16 w-16 text-muted-foreground mx-auto mb-3 opacity-50" />
+            <h3 className="text-lg font-bold mb-2">No active challenges</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Start your challenge journey today!
+            </p>
+            <Button variant="default" size="lg" className="w-full md:w-auto" asChild>
+              <Link to="/challenges">Browse Challenges</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Quick Actions - Full width on mobile */}
+      <div className="grid md:grid-cols-2 gap-3">
         <Link to="/challenges" className="block">
           <Card className="hover-lift cursor-pointer">
-            <CardContent className="p-6 text-center">
-              <Trophy className="h-12 w-12 text-primary mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Browse Challenges</h3>
-              <p className="text-muted-foreground">
-                Discover new challenges across different categories
+            <CardContent className="p-4 text-center">
+              <Trophy className="h-10 w-10 text-primary mx-auto mb-2" />
+              <h3 className="text-base font-bold mb-1">Browse Challenges</h3>
+              <p className="text-xs text-muted-foreground">
+                Discover new challenges
               </p>
             </CardContent>
           </Card>
@@ -256,11 +253,11 @@ export default function Home() {
         
         <Link to="/community" className="block">
           <Card className="hover-lift cursor-pointer">
-            <CardContent className="p-6 text-center">
-              <Users className="h-12 w-12 text-secondary mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Join Community</h3>
-              <p className="text-muted-foreground">
-                Share your progress and get inspired by others
+            <CardContent className="p-4 text-center">
+              <Users className="h-10 w-10 text-secondary mx-auto mb-2" />
+              <h3 className="text-base font-bold mb-1">Join Community</h3>
+              <p className="text-xs text-muted-foreground">
+                Share your progress
               </p>
             </CardContent>
           </Card>
