@@ -9,9 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { MessageCircle, Send, Share2, Search, Users as UsersIcon } from "lucide-react";
+import { MessageCircle, Send, Share2, Search, Users as UsersIcon, ArrowLeft } from "lucide-react";
 import { SharedChallengeCard } from "@/components/messages/SharedChallengeCard";
 import { format } from "date-fns";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Friend {
   id: string;
@@ -59,12 +60,14 @@ interface Challenge {
 export default function Messages() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showChat, setShowChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -281,42 +284,51 @@ export default function Messages() {
     );
   }
 
+  // Mobile: Show friends list OR chat, not both
+  // Desktop: Show both side-by-side
+  const showFriendsList = !isMobile || !showChat;
+  const showChatArea = !isMobile || showChat;
+
   return (
-    <div className="h-[calc(100vh-8rem)] md:h-[calc(100vh-4rem)] flex gap-4 p-4">
-      {/* Friends List */}
-      <Card className="w-full md:w-80 flex flex-col">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageCircle className="h-5 w-5" />
-            Messages
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex-1 overflow-hidden p-0">
-          <ScrollArea className="h-full px-4 pb-4">
+    <div className="h-[calc(100vh-8rem)] md:h-screen md:pt-0 flex md:gap-0">
+      {/* Friends List - Full screen on mobile, sidebar on desktop */}
+      {showFriendsList && (
+        <div className={`${isMobile ? 'w-full' : 'w-80 border-r'} flex flex-col bg-card`}>
+          <div className="border-b px-4 py-4">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <MessageCircle className="h-5 w-5" />
+              Messages
+            </h2>
+          </div>
+          
+          <ScrollArea className="flex-1">
             {friends.length === 0 ? (
-              <div className="text-center py-8 space-y-3">
-                <UsersIcon className="h-12 w-12 mx-auto text-muted-foreground" />
+              <div className="text-center py-12 px-4 space-y-3">
+                <UsersIcon className="h-16 w-16 mx-auto text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">
                   Add friends to start chatting and share challenges!
                 </p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="p-2">
                 {friends.map((friend) => (
                   <Button
                     key={friend.id}
-                    variant={selectedFriend?.id === friend.id ? 'secondary' : 'ghost'}
-                    className="w-full justify-start gap-3 h-auto py-3"
-                    onClick={() => setSelectedFriend(friend)}
+                    variant="ghost"
+                    className="w-full justify-start gap-3 h-auto py-4 mb-1"
+                    onClick={() => {
+                      setSelectedFriend(friend);
+                      if (isMobile) setShowChat(true);
+                    }}
                   >
-                    <Avatar className="h-10 w-10">
+                    <Avatar className="h-12 w-12">
                       <AvatarImage src={friend.profiles.avatar_url} />
                       <AvatarFallback>
                         {friend.profiles.display_name?.charAt(0) || friend.profiles.username?.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 text-left">
-                      <p className="font-medium">{friend.profiles.display_name || friend.profiles.username}</p>
+                      <p className="font-semibold">{friend.profiles.display_name || friend.profiles.username}</p>
                       <p className="text-xs text-muted-foreground">@{friend.profiles.username}</p>
                     </div>
                   </Button>
@@ -324,35 +336,52 @@ export default function Messages() {
               </div>
             )}
           </ScrollArea>
-        </CardContent>
-      </Card>
+        </div>
+      )}
 
-      {/* Chat Area */}
-      <Card className="flex-1 flex flex-col">
-        {selectedFriend ? (
-          <>
-            <CardHeader className="border-b">
-              <div className="flex items-center justify-between">
+      {/* Chat Area - Full screen on mobile when active, main area on desktop */}
+      {showChatArea && (
+        <div className="flex-1 flex flex-col bg-card">
+          {selectedFriend ? (
+            <>
+              {/* Chat Header */}
+              <div className="border-b px-4 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Avatar>
+                  {isMobile && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setShowChat(false);
+                        setSelectedFriend(null);
+                      }}
+                    >
+                      <ArrowLeft className="h-5 w-5" />
+                    </Button>
+                  )}
+                  <Avatar className="h-10 w-10">
                     <AvatarImage src={selectedFriend.profiles.avatar_url} />
                     <AvatarFallback>
                       {selectedFriend.profiles.display_name?.charAt(0) || selectedFriend.profiles.username?.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="font-semibold">{selectedFriend.profiles.display_name || selectedFriend.profiles.username}</h3>
+                    <h3 className="font-semibold text-sm md:text-base">
+                      {selectedFriend.profiles.display_name || selectedFriend.profiles.username}
+                    </h3>
                     <p className="text-xs text-muted-foreground">@{selectedFriend.profiles.username}</p>
                   </div>
                 </div>
+                
+                {/* Share Challenge Dialog */}
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button size="sm" variant="outline">
-                      <Share2 className="h-4 w-4 mr-2" />
-                      Share Challenge
+                    <Button size={isMobile ? "icon" : "sm"} variant="outline">
+                      <Share2 className="h-4 w-4" />
+                      {!isMobile && <span className="ml-2">Share</span>}
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl">
+                  <DialogContent className="max-w-full md:max-w-2xl mx-4">
                     <DialogHeader>
                       <DialogTitle>Share a Challenge</DialogTitle>
                     </DialogHeader>
@@ -366,13 +395,13 @@ export default function Messages() {
                           className="pl-9"
                         />
                       </div>
-                      <ScrollArea className="h-96">
+                      <ScrollArea className="h-[60vh] md:h-96">
                         <div className="space-y-2">
                           {filteredChallenges.map((challenge) => (
                             <Button
                               key={challenge.id}
                               variant="outline"
-                              className="w-full h-auto justify-start p-4"
+                              className="w-full h-auto justify-start p-3 text-left"
                               onClick={() => sendMessage(challenge.id)}
                             >
                               <div className="flex items-center gap-3 w-full">
@@ -380,18 +409,15 @@ export default function Messages() {
                                   <img
                                     src={challenge.image_url}
                                     alt={challenge.title}
-                                    className="w-12 h-12 object-cover rounded"
+                                    className="w-12 h-12 object-cover rounded flex-shrink-0"
                                   />
                                 )}
-                                <div className="flex-1 text-left">
-                                  <p className="font-medium">{challenge.title}</p>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm truncate">{challenge.title}</p>
                                   <p className="text-xs text-muted-foreground line-clamp-1">
                                     {challenge.description}
                                   </p>
                                 </div>
-                                <Badge variant="secondary">
-                                  {challenge.challenge_categories.icon} {challenge.challenge_categories.name}
-                                </Badge>
                               </div>
                             </Button>
                           ))}
@@ -401,9 +427,9 @@ export default function Messages() {
                   </DialogContent>
                 </Dialog>
               </div>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-hidden p-0">
-              <ScrollArea className="h-full p-4">
+
+              {/* Messages */}
+              <ScrollArea className="flex-1 p-4">
                 <div className="space-y-4">
                   {messages.map((message) => {
                     const isOwn = message.sender_id === user.id;
@@ -412,15 +438,15 @@ export default function Messages() {
                         key={message.id}
                         className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
                       >
-                        <div className={`max-w-[70%] ${isOwn ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
+                        <div className={`max-w-[85%] md:max-w-[70%] ${isOwn ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
                           {message.challenge_id && message.challenges ? (
                             <SharedChallengeCard challenge={message.challenges} />
                           ) : (
                             <div
-                              className={`px-4 py-2 rounded-lg ${
+                              className={`px-4 py-2 rounded-2xl ${
                                 isOwn
-                                  ? 'bg-primary text-primary-foreground'
-                                  : 'bg-muted'
+                                  ? 'bg-primary text-primary-foreground rounded-br-sm'
+                                  : 'bg-muted rounded-bl-sm'
                               }`}
                             >
                               <p className="text-sm">{message.content}</p>
@@ -436,38 +462,45 @@ export default function Messages() {
                   <div ref={messagesEndRef} />
                 </div>
               </ScrollArea>
-            </CardContent>
-            <div className="border-t p-4">
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  sendMessage();
-                }}
-                className="flex gap-2"
-              >
-                <Input
-                  placeholder="Type a message..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  className="flex-1"
-                />
-                <Button type="submit" size="icon" disabled={!newMessage.trim()}>
-                  <Send className="h-4 w-4" />
-                </Button>
-              </form>
+
+              {/* Message Input */}
+              <div className="border-t p-3 md:p-4 bg-card">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    sendMessage();
+                  }}
+                  className="flex gap-2"
+                >
+                  <Input
+                    placeholder="Message..."
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    className="flex-1 rounded-full"
+                  />
+                  <Button 
+                    type="submit" 
+                    size="icon" 
+                    disabled={!newMessage.trim()}
+                    className="rounded-full flex-shrink-0"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </form>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center p-4">
+              <div className="text-center space-y-3">
+                <MessageCircle className="h-16 w-16 mx-auto text-muted-foreground" />
+                <p className="text-muted-foreground">
+                  Select a friend to start chatting
+                </p>
+              </div>
             </div>
-          </>
-        ) : (
-          <CardContent className="flex-1 flex items-center justify-center">
-            <div className="text-center space-y-3">
-              <MessageCircle className="h-16 w-16 mx-auto text-muted-foreground" />
-              <p className="text-muted-foreground">
-                Select a friend to start chatting
-              </p>
-            </div>
-          </CardContent>
-        )}
-      </Card>
+          )}
+        </div>
+      )}
     </div>
   );
 }
