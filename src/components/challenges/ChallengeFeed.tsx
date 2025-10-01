@@ -74,7 +74,6 @@ const ChallengeFeed: React.FC = () => {
   const [commentInput, setCommentInput] = useState('');
   const [comments, setComments] = useState<Comment[]>([]);
   const [seenPosts, setSeenPosts] = useState<Set<string>>(new Set());
-  const [showReactions, setShowReactions] = useState(false);
   const [lastTap, setLastTap] = useState(0);
   const cardRef = useRef<HTMLDivElement>(null);
   const [selectedChallenge, setSelectedChallenge] = useState<any>(null);
@@ -578,12 +577,15 @@ const ChallengeFeed: React.FC = () => {
 
             {/* Content Area - Scrollable */}
             <div className="flex-1 px-5 overflow-y-auto space-y-4 min-h-0">
-              {/* Challenge Badge */}
+              {/* Challenge Badge - Modern Glassmorphism */}
               {currentPost.user_challenges?.challenges && (
-                <Badge className="gap-2 px-4 py-2 text-sm bg-white/95 backdrop-blur border-white/60 shadow-md hover:bg-white transition-colors">
-                  <span className="text-base">🎯</span>
-                  <span className="font-bold text-orange-600 truncate">{currentPost.user_challenges.challenges.title}</span>
-                </Badge>
+                <div className="relative group">
+                  <div className="absolute inset-0 bg-gradient-to-r from-orange-400/30 to-pink-400/30 rounded-2xl blur-xl opacity-60 group-hover:opacity-80 transition-opacity" />
+                  <div className="relative flex items-center gap-3 px-4 py-3 bg-white/15 backdrop-blur-xl border border-white/30 rounded-2xl shadow-lg hover:bg-white/20 transition-all">
+                    <span className="text-2xl">🎯</span>
+                    <span className="font-bold text-white drop-shadow-md truncate text-sm">{currentPost.user_challenges.challenges.title}</span>
+                  </div>
+                </div>
               )}
 
               {/* Post Image */}
@@ -617,10 +619,10 @@ const ChallengeFeed: React.FC = () => {
             {/* Floating Action Bar - Instagram Style */}
             <div className="flex-shrink-0 px-5 py-4 bg-gradient-to-t from-black/5 to-transparent">
               <div className="flex items-center justify-center gap-8">
-                {/* Like Button - Instagram Style */}
-                <div className="relative flex items-center gap-2">
+                {/* Like Button - Simple */}
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setShowReactions(!showReactions)}
+                    onClick={() => toggleLike(currentPost.id)}
                     className="relative group transition-all duration-200 hover:scale-110 active:scale-95 flex items-center justify-center rounded-full min-w-[44px] min-h-[44px]"
                   >
                     <Heart 
@@ -637,25 +639,6 @@ const ChallengeFeed: React.FC = () => {
                     <span className="text-sm font-bold text-white drop-shadow-md">
                       {currentPost.likes_count}
                     </span>
-                  )}
-                  
-                  {/* Reaction Picker */}
-                  {showReactions && (
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 p-2.5 bg-white/98 backdrop-blur-md rounded-full shadow-2xl flex gap-1 animate-scale-in border border-white/80 z-50">
-                      {REACTION_EMOJIS.map((reaction) => (
-                        <button
-                          key={reaction.emoji}
-                          onClick={() => {
-                            toggleLike(currentPost.id);
-                            setShowReactions(false);
-                          }}
-                          className="text-2xl hover:scale-125 active:scale-110 transition-transform min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-gray-100"
-                          title={reaction.label}
-                        >
-                          {reaction.emoji}
-                        </button>
-                      ))}
-                    </div>
                   )}
                 </div>
                 
