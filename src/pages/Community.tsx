@@ -8,23 +8,13 @@ const Community = () => {
   const [activeTab, setActiveTab] = useState<'feed' | 'leaderboard'>('feed');
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-          Community
-        </h1>
-        <p className="text-muted-foreground">
-          Connect with others, share your progress, and see who's leading the way
-        </p>
-      </div>
-
-      {/* Navigation Tabs */}
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
+    <div className="h-[calc(100vh-4rem)]">
+      {/* Navigation Tabs - Compact */}
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="h-full flex flex-col">
+        <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mt-2 mb-0">
           <TabsTrigger value="feed" className="gap-2">
             <MessageSquare className="w-4 h-4" />
-            Community Feed
+            Feed
           </TabsTrigger>
           <TabsTrigger value="leaderboard" className="gap-2">
             <Trophy className="w-4 h-4" />
@@ -32,11 +22,11 @@ const Community = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="feed">
+        <TabsContent value="feed" className="flex-1 mt-0">
           <ChallengeFeed />
         </TabsContent>
 
-        <TabsContent value="leaderboard">
+        <TabsContent value="leaderboard" className="flex-1 mt-0">
           <CommunityStats />
         </TabsContent>
       </Tabs>

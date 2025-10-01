@@ -354,8 +354,8 @@ const ChallengeFeed: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="h-[85vh] flex items-center justify-center">
-        <div className="w-full max-w-md aspect-[3/4] bg-gradient-to-br from-muted to-muted/50 rounded-3xl animate-pulse shadow-2xl" />
+      <div className="h-full flex items-center justify-center py-4">
+        <div className="w-[90%] max-w-lg h-[75vh] bg-gradient-to-br from-[#FF7E5F] via-[#FFB88C] to-[#FFC7A3] rounded-3xl animate-pulse shadow-2xl opacity-30" />
       </div>
     );
   }
@@ -365,7 +365,7 @@ const ChallengeFeed: React.FC = () => {
 
   if (sortedPosts.length === 0) {
     return (
-      <div className="h-[85vh] flex flex-col items-center justify-center text-center px-6">
+      <div className="h-full flex flex-col items-center justify-center text-center px-6">
         <div className="text-6xl mb-6">📸</div>
         <h3 className="text-2xl font-bold mb-3">No posts yet</h3>
         <p className="text-muted-foreground max-w-sm">
@@ -378,7 +378,7 @@ const ChallengeFeed: React.FC = () => {
   const progress = ((currentIndex + 1) / sortedPosts.length) * 100;
 
   return (
-    <div className="relative h-[85vh] flex flex-col items-center">
+    <div className="relative h-full flex flex-col">
       <style>{`
         @keyframes heartPop {
           0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
@@ -388,7 +388,7 @@ const ChallengeFeed: React.FC = () => {
       `}</style>
 
       {/* View Mode Toggle */}
-      <div className="flex items-center justify-center gap-3 mb-6">
+      <div className="flex items-center justify-center gap-3 py-3 px-4">
         <Button
           variant={viewMode === 'trending' ? 'default' : 'outline'}
           size="sm"
@@ -396,7 +396,7 @@ const ChallengeFeed: React.FC = () => {
             setViewMode('trending');
             setCurrentIndex(0);
           }}
-          className="gap-2 rounded-full shadow-lg"
+          className="gap-2 rounded-full shadow-md"
         >
           <Flame className="w-4 h-4" />
           Trending
@@ -408,39 +408,15 @@ const ChallengeFeed: React.FC = () => {
             setViewMode('latest');
             setCurrentIndex(0);
           }}
-          className="gap-2 rounded-full shadow-lg"
+          className="gap-2 rounded-full shadow-md"
         >
           <Flame className="w-4 h-4" />
           Latest
         </Button>
       </div>
 
-      {/* Navigation Buttons */}
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 z-30">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={prevCard}
-          disabled={currentIndex === 0}
-          className="w-12 h-12 rounded-full shadow-2xl bg-card/95 backdrop-blur hover:scale-110 transition-transform disabled:opacity-0"
-        >
-          <ChevronLeft className="w-6 h-6" />
-        </Button>
-      </div>
-      <div className="absolute right-4 top-1/2 -translate-y-1/2 z-30">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={nextCard}
-          disabled={currentIndex === sortedPosts.length - 1}
-          className="w-12 h-12 rounded-full shadow-2xl bg-card/95 backdrop-blur hover:scale-110 transition-transform disabled:opacity-0"
-        >
-          <ChevronRight className="w-6 h-6" />
-        </Button>
-      </div>
-
       {/* Main Card Container */}
-      <div className="relative w-full max-w-md flex-1 flex items-center justify-center px-4">
+      <div className="flex-1 flex items-center justify-center px-4 pb-20">
         <animated.div
           {...bind()}
           ref={cardRef}
@@ -450,54 +426,49 @@ const ChallengeFeed: React.FC = () => {
             scale,
             touchAction: 'none',
           }}
-          className="w-full h-[90%] cursor-grab active:cursor-grabbing"
+          className="w-[90%] max-w-lg h-[75vh] cursor-grab active:cursor-grabbing"
           onDoubleClick={() => handleDoubleTap(currentPost.id)}
         >
-          <Card className="w-full h-full rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-card to-card/95 border-2 border-primary/20 relative">
-            {/* High Engagement Glow */}
-            {currentPost.is_high_engagement && (
-              <div className="absolute inset-0 bg-gradient-primary opacity-20 blur-2xl -z-10" />
-            )}
-
+          <Card className="w-full h-full rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-[#FF7E5F] via-[#FFB88C] to-[#FFC7A3] border-0 relative flex flex-col">
             {/* Trending Badge */}
             {currentPost.is_high_engagement && (
-              <div className="absolute top-6 right-6 z-10">
-                <Badge className="bg-gradient-primary text-white shadow-elegant gap-1 px-3 py-1.5">
+              <div className="absolute top-5 right-5 z-10">
+                <Badge className="bg-white/90 text-orange-600 shadow-lg gap-1 px-3 py-1.5 font-bold backdrop-blur">
                   <Flame className="w-4 h-4" />
                   Trending
                 </Badge>
               </div>
             )}
 
-            {/* Profile Header - Sticky */}
-            <div className="sticky top-0 z-20 bg-gradient-to-b from-card via-card to-transparent backdrop-blur-sm p-6 pb-4">
-              <div className="flex items-center gap-4">
-                <Avatar className="w-14 h-14 border-3 border-primary/30 shadow-lg">
+            {/* Profile Header */}
+            <div className="flex-shrink-0 p-5 pb-4">
+              <div className="flex items-center gap-3">
+                <Avatar className="w-14 h-14 border-2 border-white/50 shadow-lg ring-2 ring-white/20">
                   <AvatarImage src={currentPost.profiles.avatar_url || undefined} />
-                  <AvatarFallback className="text-xl font-bold bg-gradient-primary text-white">
+                  <AvatarFallback className="text-xl font-bold bg-white text-orange-600">
                     {currentPost.profiles.display_name?.charAt(0) || currentPost.profiles.username?.charAt(0) || 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-lg truncate">{currentPost.profiles.display_name || currentPost.profiles.username}</p>
-                  <p className="text-sm text-muted-foreground">{formatTimeAgo(currentPost.created_at)}</p>
+                  <p className="font-bold text-lg truncate text-white drop-shadow-md">{currentPost.profiles.display_name || currentPost.profiles.username}</p>
+                  <p className="text-sm text-white/80 font-medium">{formatTimeAgo(currentPost.created_at)}</p>
                 </div>
               </div>
             </div>
 
             {/* Content Area - Scrollable */}
-            <div className="px-6 pb-32 space-y-4 overflow-y-auto max-h-[calc(100%-180px)]">
+            <div className="flex-1 px-5 overflow-y-auto space-y-4 min-h-0">
               {/* Challenge Badge */}
               {currentPost.user_challenges?.challenges && (
-                <Badge variant="outline" className="gap-2 px-4 py-2 text-sm">
+                <Badge variant="outline" className="gap-2 px-4 py-2 text-sm bg-white/90 backdrop-blur border-white/50">
                   <span className="text-lg">{currentPost.user_challenges.challenges.challenge_categories?.icon}</span>
-                  <span className="font-semibold">{currentPost.user_challenges.challenges.title}</span>
+                  <span className="font-bold text-orange-600">{currentPost.user_challenges.challenges.title}</span>
                 </Badge>
               )}
 
               {/* Post Image */}
               {currentPost.image_url && (
-                <div className="rounded-2xl overflow-hidden shadow-elegant">
+                <div className="rounded-2xl overflow-hidden shadow-xl ring-4 ring-white/30">
                   <img 
                     src={currentPost.image_url} 
                     alt="Challenge proof" 
@@ -507,14 +478,14 @@ const ChallengeFeed: React.FC = () => {
               )}
 
               {/* Content Text */}
-              <div className="text-center space-y-3 py-6">
-                <p className="text-lg leading-relaxed font-medium px-4">{currentPost.content}</p>
+              <div className="text-center space-y-3 py-4">
+                <p className="text-lg leading-relaxed font-semibold text-white drop-shadow-md px-2">{currentPost.content}</p>
                 
                 {/* Hashtags */}
                 {currentPost.hashtags && currentPost.hashtags.length > 0 && (
                   <div className="flex flex-wrap justify-center gap-2">
                     {currentPost.hashtags.map((hashtag, idx) => (
-                      <span key={idx} className="text-sm font-bold bg-gradient-primary bg-clip-text text-transparent">
+                      <span key={idx} className="text-sm font-bold text-white drop-shadow px-3 py-1 bg-white/20 rounded-full backdrop-blur">
                         {hashtag}
                       </span>
                     ))}
@@ -524,8 +495,8 @@ const ChallengeFeed: React.FC = () => {
             </div>
 
             {/* Floating Action Bar */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-card via-card to-transparent p-6 pt-8">
-              <div className="flex items-center justify-around mb-4">
+            <div className="flex-shrink-0 p-5 pt-4 bg-gradient-to-t from-white/10 to-transparent backdrop-blur-sm">
+              <div className="flex items-center justify-around mb-3">
                 {/* Like Button */}
                 <div className="relative">
                   <Button 
@@ -533,17 +504,17 @@ const ChallengeFeed: React.FC = () => {
                     size="lg"
                     onClick={() => setShowReactions(!showReactions)}
                     className={cn(
-                      "gap-3 transition-all hover:scale-110 active:scale-95 rounded-full",
+                      "gap-2 transition-all hover:scale-110 active:scale-95 rounded-full bg-white/80 hover:bg-white backdrop-blur shadow-lg",
                       currentPost.likes_count > 0 && "text-red-500"
                     )}
                   >
-                    <Heart className={cn("w-7 h-7", currentPost.likes_count > 0 && "fill-current")} />
-                    <span className="text-lg font-bold">{currentPost.likes_count}</span>
+                    <Heart className={cn("w-6 h-6", currentPost.likes_count > 0 && "fill-current")} />
+                    <span className="text-base font-bold">{currentPost.likes_count}</span>
                   </Button>
                   
                   {/* Reaction Picker */}
                   {showReactions && (
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 p-3 bg-card border-2 border-primary/20 rounded-full shadow-2xl flex gap-2 animate-scale-in">
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 p-3 bg-white/95 backdrop-blur rounded-full shadow-2xl flex gap-2 animate-scale-in border-2 border-white/50">
                       {REACTION_EMOJIS.map((reaction) => (
                         <button
                           key={reaction.emoji}
@@ -551,7 +522,7 @@ const ChallengeFeed: React.FC = () => {
                             toggleLike(currentPost.id);
                             setShowReactions(false);
                           }}
-                          className="text-3xl hover:scale-125 active:scale-110 transition-transform"
+                          className="text-2xl hover:scale-125 active:scale-110 transition-transform"
                           title={reaction.label}
                         >
                           {reaction.emoji}
@@ -569,10 +540,10 @@ const ChallengeFeed: React.FC = () => {
                     setShowComments(!showComments);
                     if (!showComments) fetchComments(currentPost.id);
                   }}
-                  className="gap-3 hover:scale-110 active:scale-95 transition-all rounded-full"
+                  className="gap-2 hover:scale-110 active:scale-95 transition-all rounded-full bg-white/80 hover:bg-white backdrop-blur shadow-lg"
                 >
-                  <MessageCircle className="w-7 h-7" />
-                  <span className="text-lg font-bold">{currentPost.comments_count}</span>
+                  <MessageCircle className="w-6 h-6" />
+                  <span className="text-base font-bold">{currentPost.comments_count}</span>
                 </Button>
                 
                 {/* Share Button */}
@@ -580,22 +551,44 @@ const ChallengeFeed: React.FC = () => {
                   variant="ghost" 
                   size="lg"
                   onClick={() => handleShare(currentPost)}
-                  className="gap-3 hover:scale-110 active:scale-95 transition-all rounded-full"
+                  className="hover:scale-110 active:scale-95 transition-all rounded-full bg-white/80 hover:bg-white backdrop-blur shadow-lg p-3"
                 >
-                  <Share2 className="w-7 h-7" />
+                  <Share2 className="w-6 h-6" />
                 </Button>
               </div>
 
               {/* Progress Bar */}
-              <div className="h-1 bg-muted rounded-full overflow-hidden">
+              <div className="h-1.5 bg-white/30 rounded-full overflow-hidden backdrop-blur">
                 <div 
-                  className="h-full bg-gradient-primary transition-all duration-300"
+                  className="h-full bg-white shadow-glow transition-all duration-300"
                   style={{ width: `${progress}%` }}
                 />
               </div>
             </div>
           </Card>
         </animated.div>
+      </div>
+
+      {/* Navigation Arrows - Bottom Fixed */}
+      <div className="fixed bottom-4 left-0 right-0 z-30 flex items-center justify-center gap-4 pointer-events-none">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={prevCard}
+          disabled={currentIndex === 0}
+          className="w-14 h-14 rounded-full shadow-2xl bg-white/95 hover:bg-white backdrop-blur hover:scale-110 transition-all disabled:opacity-0 pointer-events-auto border-2 border-orange-200"
+        >
+          <ChevronLeft className="w-6 h-6 text-orange-600" />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={nextCard}
+          disabled={currentIndex === sortedPosts.length - 1}
+          className="w-14 h-14 rounded-full shadow-2xl bg-white/95 hover:bg-white backdrop-blur hover:scale-110 transition-all disabled:opacity-0 pointer-events-auto border-2 border-orange-200"
+        >
+          <ChevronRight className="w-6 h-6 text-orange-600" />
+        </Button>
       </div>
 
       {/* Comments Modal */}
