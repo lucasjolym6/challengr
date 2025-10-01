@@ -7,10 +7,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { Heart, MessageCircle, Share2, Send, ChevronLeft, ChevronRight, Flame, X } from "lucide-react";
+import { Heart, MessageCircle, Share2, Send, ChevronLeft, ChevronRight, Flame, X, Compass } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSpring, animated, config } from '@react-spring/web';
 import { useDrag } from '@use-gesture/react';
+import ChallengeDetailDialog from './ChallengeDetailDialog';
 
 interface Post {
   id: string;
@@ -29,6 +30,7 @@ interface Post {
   };
   user_challenges?: {
     challenges: {
+      id: string;
       title: string;
       challenge_categories: {
         name: string;
@@ -75,6 +77,9 @@ const ChallengeFeed: React.FC = () => {
   const [showReactions, setShowReactions] = useState(false);
   const [lastTap, setLastTap] = useState(0);
   const cardRef = useRef<HTMLDivElement>(null);
+  const [selectedChallenge, setSelectedChallenge] = useState<any>(null);
+  const [selectedUserChallenge, setSelectedUserChallenge] = useState<any>(null);
+  const [showChallengeDialog, setShowChallengeDialog] = useState(false);
 
   const [{ x, rotate, scale }, api] = useSpring(() => ({
     x: 0,
@@ -120,6 +125,7 @@ const ChallengeFeed: React.FC = () => {
           profiles (username, display_name, avatar_url),
           user_challenges (
             challenges (
+              id,
               title,
               challenge_categories (name, icon)
             )
@@ -352,6 +358,52 @@ const ChallengeFeed: React.FC = () => {
     }
   };
 
+  const handleOpenChallenge = async (post: Post) => {
+    if (!post.user_challenges?.challenges) return;
+    
+    try {
+      // Fetch full challenge details
+      const { data: challengeData, error: challengeError } = await supabase
+        .from('challenges')
+        .select(`
+          *,
+          challenge_categories (name, icon, color)
+        `)
+        .eq('id', post.user_challenges.challenges.id)
+        .single();
+
+      if (challengeError) throw challengeError;
+
+      // Fetch user challenge if exists
+      if (user) {
+        const { data: userChallengeData } = await supabase
+          .from('user_challenges')
+          .select('*')
+          .eq('challenge_id', post.user_challenges.challenges.id)
+          .eq('user_id', user.id)
+          .single();
+
+        setSelectedUserChallenge(userChallengeData);
+      }
+
+      setSelectedChallenge(challengeData);
+      setShowChallengeDialog(true);
+    } catch (error) {
+      console.error('Error loading challenge:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load challenge details",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleChallengeDialogClose = () => {
+    setShowChallengeDialog(false);
+    setSelectedChallenge(null);
+    setSelectedUserChallenge(null);
+  };
+
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center py-4">
@@ -429,11 +481,14 @@ const ChallengeFeed: React.FC = () => {
           className="w-[90%] max-w-lg h-[55vh] cursor-grab active:cursor-grabbing"
           onDoubleClick={() => handleDoubleTap(currentPost.id)}
         >
-          <Card className="w-full h-full rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-[#FF7E5F] via-[#FFB88C] to-[#FFC7A3] border-0 relative flex flex-col">
+          <Card className="w-full h-full rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-[#FF8A4C] via-[#FFB08A] to-[#FFD0B8] border-0 relative flex flex-col hover:shadow-[0_20px_60px_-15px_rgba(255,138,76,0.5)] transition-shadow duration-300">
+            {/* Inner highlight on focus */}
+            <div className="absolute inset-0 rounded-3xl ring-1 ring-inset ring-white/20 pointer-events-none" />
+            
             {/* Trending Badge */}
             {currentPost.is_high_engagement && (
               <div className="absolute top-5 right-5 z-10">
-                <Badge className="bg-white/90 text-orange-600 shadow-lg gap-1 px-3 py-1.5 font-bold backdrop-blur">
+                <Badge className="bg-white/90 text-orange-600 shadow-lg gap-1 px-3 py-1.5 font-bold backdrop-blur border border-orange-200">
                   <Flame className="w-4 h-4" />
                   Trending
                 </Badge>
@@ -443,15 +498,15 @@ const ChallengeFeed: React.FC = () => {
             {/* Profile Header */}
             <div className="flex-shrink-0 p-5 pb-4">
               <div className="flex items-center gap-3">
-                <Avatar className="w-14 h-14 border-2 border-white/50 shadow-lg ring-2 ring-white/20">
+                <Avatar className="w-12 h-12 border-2 border-white/60 shadow-lg ring-2 ring-white/30">
                   <AvatarImage src={currentPost.profiles.avatar_url || undefined} />
-                  <AvatarFallback className="text-xl font-bold bg-white text-orange-600">
+                  <AvatarFallback className="text-lg font-bold bg-white text-orange-600">
                     {currentPost.profiles.display_name?.charAt(0) || currentPost.profiles.username?.charAt(0) || 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-lg truncate text-white drop-shadow-md">{currentPost.profiles.display_name || currentPost.profiles.username}</p>
-                  <p className="text-sm text-white/80 font-medium">{formatTimeAgo(currentPost.created_at)}</p>
+                  <p className="text-sm text-white/90 font-medium drop-shadow">{formatTimeAgo(currentPost.created_at)}</p>
                 </div>
               </div>
             </div>
@@ -460,9 +515,9 @@ const ChallengeFeed: React.FC = () => {
             <div className="flex-1 px-5 overflow-y-auto space-y-4 min-h-0">
               {/* Challenge Badge */}
               {currentPost.user_challenges?.challenges && (
-                <Badge variant="outline" className="gap-2 px-4 py-2 text-sm bg-white/90 backdrop-blur border-white/50">
-                  <span className="text-lg">{currentPost.user_challenges.challenges.challenge_categories?.icon}</span>
-                  <span className="font-bold text-orange-600">{currentPost.user_challenges.challenges.title}</span>
+                <Badge className="gap-2 px-4 py-2 text-sm bg-white/95 backdrop-blur border-white/60 shadow-md hover:bg-white transition-colors">
+                  <span className="text-base">🎯</span>
+                  <span className="font-bold text-orange-600 truncate">{currentPost.user_challenges.challenges.title}</span>
                 </Badge>
               )}
 
@@ -478,14 +533,14 @@ const ChallengeFeed: React.FC = () => {
               )}
 
               {/* Content Text */}
-              <div className="text-center space-y-3 py-4">
-                <p className="text-lg leading-relaxed font-semibold text-white drop-shadow-md px-2">{currentPost.content}</p>
+              <div className="text-center space-y-3 py-2">
+                <p className="text-base leading-relaxed font-semibold text-white drop-shadow-md px-2 line-clamp-3">{currentPost.content}</p>
                 
                 {/* Hashtags */}
                 {currentPost.hashtags && currentPost.hashtags.length > 0 && (
                   <div className="flex flex-wrap justify-center gap-2">
                     {currentPost.hashtags.map((hashtag, idx) => (
-                      <span key={idx} className="text-sm font-bold text-white drop-shadow px-3 py-1 bg-white/20 rounded-full backdrop-blur">
+                      <span key={idx} className="text-sm font-bold text-white drop-shadow px-3 py-1.5 bg-white/25 rounded-full backdrop-blur-sm border border-white/30 hover:bg-white/35 transition-colors">
                         {hashtag}
                       </span>
                     ))}
@@ -495,7 +550,7 @@ const ChallengeFeed: React.FC = () => {
             </div>
 
             {/* Floating Action Bar */}
-            <div className="flex-shrink-0 p-5 pt-4 bg-gradient-to-t from-white/10 to-transparent backdrop-blur-sm">
+            <div className="flex-shrink-0 p-5 pt-4 bg-gradient-to-t from-black/10 to-transparent backdrop-blur-[2px]">
               <div className="flex items-center justify-around">
                 {/* Like Button */}
                 <div className="relative">
@@ -504,7 +559,7 @@ const ChallengeFeed: React.FC = () => {
                     size="lg"
                     onClick={() => setShowReactions(!showReactions)}
                     className={cn(
-                      "gap-2 transition-all hover:scale-110 active:scale-95 rounded-full bg-white/80 hover:bg-white backdrop-blur shadow-lg",
+                      "gap-2 transition-all hover:scale-110 active:scale-95 rounded-full bg-white/90 hover:bg-white backdrop-blur-sm shadow-lg border border-white/50 min-w-[44px] min-h-[44px]",
                       currentPost.likes_count > 0 && "text-red-500"
                     )}
                   >
@@ -514,7 +569,7 @@ const ChallengeFeed: React.FC = () => {
                   
                   {/* Reaction Picker */}
                   {showReactions && (
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 p-3 bg-white/95 backdrop-blur rounded-full shadow-2xl flex gap-2 animate-scale-in border-2 border-white/50">
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 p-3 bg-white/95 backdrop-blur-md rounded-full shadow-2xl flex gap-2 animate-scale-in border-2 border-white/60 z-50">
                       {REACTION_EMOJIS.map((reaction) => (
                         <button
                           key={reaction.emoji}
@@ -522,7 +577,7 @@ const ChallengeFeed: React.FC = () => {
                             toggleLike(currentPost.id);
                             setShowReactions(false);
                           }}
-                          className="text-2xl hover:scale-125 active:scale-110 transition-transform"
+                          className="text-2xl hover:scale-125 active:scale-110 transition-transform min-w-[44px] min-h-[44px] flex items-center justify-center"
                           title={reaction.label}
                         >
                           {reaction.emoji}
@@ -540,21 +595,33 @@ const ChallengeFeed: React.FC = () => {
                     setShowComments(!showComments);
                     if (!showComments) fetchComments(currentPost.id);
                   }}
-                  className="gap-2 hover:scale-110 active:scale-95 transition-all rounded-full bg-white/80 hover:bg-white backdrop-blur shadow-lg"
+                  className="gap-2 hover:scale-110 active:scale-95 transition-all rounded-full bg-white/90 hover:bg-white backdrop-blur-sm shadow-lg border border-white/50 min-w-[44px] min-h-[44px]"
                 >
                   <MessageCircle className="w-6 h-6" />
                   <span className="text-base font-bold">{currentPost.comments_count}</span>
                 </Button>
                 
-                {/* Share Button */}
-                <Button 
-                  variant="ghost" 
-                  size="lg"
-                  onClick={() => handleShare(currentPost)}
-                  className="hover:scale-110 active:scale-95 transition-all rounded-full bg-white/80 hover:bg-white backdrop-blur shadow-lg p-3"
-                >
-                  <Share2 className="w-6 h-6" />
-                </Button>
+                {/* Challenge/Share Button */}
+                {currentPost.user_challenges?.challenges ? (
+                  <Button 
+                    variant="ghost" 
+                    size="lg"
+                    onClick={() => handleOpenChallenge(currentPost)}
+                    className="gap-2 hover:scale-110 active:scale-95 transition-all rounded-full bg-white/90 hover:bg-white backdrop-blur-sm shadow-lg border border-white/50 min-w-[44px] min-h-[44px]"
+                    title="Open challenge"
+                  >
+                    <Compass className="w-6 h-6" />
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="ghost" 
+                    size="lg"
+                    onClick={() => handleShare(currentPost)}
+                    className="hover:scale-110 active:scale-95 transition-all rounded-full bg-white/90 hover:bg-white backdrop-blur-sm shadow-lg border border-white/50 p-3 min-w-[44px] min-h-[44px]"
+                  >
+                    <Share2 className="w-6 h-6" />
+                  </Button>
+                )}
               </div>
             </div>
           </Card>
@@ -587,7 +654,7 @@ const ChallengeFeed: React.FC = () => {
       {showComments && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end md:items-center justify-center animate-fade-in">
           <div className="w-full max-w-lg bg-card rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[80vh] overflow-hidden animate-slide-in-right">
-            <div className="sticky top-0 bg-card border-b border-border p-4 flex items-center justify-between">
+            <div className="sticky top-0 bg-card border-b border-border p-4 flex items-center justify-between z-10">
               <h3 className="text-lg font-bold">Comments ({currentPost.comments_count})</h3>
               <Button 
                 variant="ghost" 
@@ -623,7 +690,7 @@ const ChallengeFeed: React.FC = () => {
               ))}
             </div>
 
-            <div className="sticky bottom-0 bg-card border-t border-border p-4">
+            <div className="sticky bottom-0 bg-card border-t border-border p-4 z-10">
               <div className="flex gap-3">
                 <Avatar className="w-10 h-10">
                   <AvatarFallback>
@@ -651,6 +718,18 @@ const ChallengeFeed: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Challenge Detail Dialog */}
+      <ChallengeDetailDialog
+        challenge={selectedChallenge}
+        userChallenge={selectedUserChallenge}
+        isOpen={showChallengeDialog}
+        onClose={handleChallengeDialogClose}
+        onStatusUpdate={() => {
+          handleChallengeDialogClose();
+          fetchPosts();
+        }}
+      />
     </div>
   );
 };
