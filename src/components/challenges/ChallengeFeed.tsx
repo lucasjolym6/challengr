@@ -355,7 +355,7 @@ const ChallengeFeed: React.FC = () => {
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center py-4">
-        <div className="w-[90%] max-w-lg h-[75vh] bg-gradient-to-br from-[#FF7E5F] via-[#FFB88C] to-[#FFC7A3] rounded-3xl animate-pulse shadow-2xl opacity-30" />
+        <div className="w-[90%] max-w-lg h-[60vh] bg-gradient-to-br from-[#FF7E5F] via-[#FFB88C] to-[#FFC7A3] rounded-3xl animate-pulse shadow-2xl opacity-30" />
       </div>
     );
   }
@@ -416,7 +416,7 @@ const ChallengeFeed: React.FC = () => {
       </div>
 
       {/* Main Card Container */}
-      <div className="flex-1 flex items-center justify-center px-4 pb-20">
+      <div className="flex-1 flex items-center justify-center px-4 pb-24">
         <animated.div
           {...bind()}
           ref={cardRef}
@@ -426,7 +426,7 @@ const ChallengeFeed: React.FC = () => {
             scale,
             touchAction: 'none',
           }}
-          className="w-[90%] max-w-lg h-[75vh] cursor-grab active:cursor-grabbing"
+          className="w-[90%] max-w-lg h-[60vh] cursor-grab active:cursor-grabbing"
           onDoubleClick={() => handleDoubleTap(currentPost.id)}
         >
           <Card className="w-full h-full rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-[#FF7E5F] via-[#FFB88C] to-[#FFC7A3] border-0 relative flex flex-col">
@@ -570,7 +570,7 @@ const ChallengeFeed: React.FC = () => {
       </div>
 
       {/* Navigation Arrows - Bottom Fixed */}
-      <div className="fixed bottom-4 left-0 right-0 z-30 flex items-center justify-center gap-4 pointer-events-none">
+      <div className="fixed bottom-20 left-0 right-0 z-30 flex items-center justify-center gap-4 pointer-events-none">
         <Button
           variant="outline"
           size="icon"
