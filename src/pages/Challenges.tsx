@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -25,6 +26,7 @@ interface Challenge {
   is_custom: boolean;
   created_by: string | null;
   type: 'company' | 'community';
+  image_url: string | null;
   challenge_categories: {
     name: string;
     icon: string;
@@ -33,6 +35,7 @@ interface Challenge {
   profiles: {
     display_name: string | null;
     username: string;
+    avatar_url: string | null;
   } | null;
 }
 
@@ -86,7 +89,7 @@ const Challenges = () => {
         supabase.from('challenges').select(`
           *,
           challenge_categories (name, icon, color),
-          profiles!challenges_created_by_fkey (display_name, username)
+          profiles!challenges_created_by_fkey (display_name, username, avatar_url)
         `).eq('is_active', true),
         supabase.from('challenge_categories').select('*'),
         user ? supabase.from('user_challenges').select(`
@@ -251,75 +254,86 @@ const Challenges = () => {
   const renderChallengeCard = (challenge: Challenge) => {
     const userChallenge = getUserChallengeStatus(challenge.id);
     const status = userChallenge?.status || 'to_do';
+    const creatorName = challenge.profiles?.display_name || challenge.profiles?.username || 'Unknown';
+    const creatorInitials = creatorName.substring(0, 2).toUpperCase();
 
     return (
       <Card 
         key={challenge.id} 
-        className="group hover:shadow-lg transition-all duration-300 cursor-pointer"
+        className="group hover-lift overflow-hidden cursor-pointer"
         onClick={() => openChallengeDetail(challenge)}
       >
-        <CardHeader className="pb-4">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className="text-2xl">
-                {challenge.challenge_categories?.icon || '🎯'}
-              </div>
-              <div className="flex-1">
-                <CardTitle className="text-lg">{challenge.title}</CardTitle>
-                {challenge.profiles && (
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    by {challenge.profiles.display_name || challenge.profiles.username}
-                  </p>
-                )}
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge variant={getCategoryVariant(challenge.challenge_categories?.name || '')}>
-                    {challenge.challenge_categories?.name}
-                  </Badge>
-                  <Badge variant={challenge.type === 'company' ? 'company' : 'community'}>
-                    {challenge.type === 'company' ? 'Company' : 'Community'}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-            <Badge variant={getStatusVariant(status)}>
-              {status === 'to_do' ? 'To Do' : status === 'in_progress' ? 'In Progress' : 'Completed'}
+        {/* Challenge Image */}
+        {challenge.image_url && (
+          <div className="relative h-48 w-full overflow-hidden bg-muted">
+            <img 
+              src={challenge.image_url} 
+              alt={challenge.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+          </div>
+        )}
+
+        <CardContent className="p-4 space-y-3">
+          {/* Creator Info */}
+          <div className="flex items-center gap-2">
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={challenge.profiles?.avatar_url || undefined} />
+              <AvatarFallback className="text-xs bg-muted">{creatorInitials}</AvatarFallback>
+            </Avatar>
+            <span className="text-sm font-semibold">{creatorName}</span>
+            <Badge variant="outline" className="ml-auto text-xs">
+              {challenge.challenge_categories?.name}
             </Badge>
           </div>
-        </CardHeader>
-        <CardContent>
-          <CardDescription className="mb-4">
-            {challenge.description}
-          </CardDescription>
-          
-          <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
-            <span>Difficulty: {challenge.difficulty_level}/5</span>
-            <span>{challenge.points_reward} points</span>
+
+          {/* Title and Description */}
+          <div>
+            <h3 className="font-bold text-lg leading-tight mb-1">{challenge.title}</h3>
+            <p className="text-sm text-muted-foreground line-clamp-2">
+              {challenge.description}
+            </p>
           </div>
 
-          <div className="flex gap-2">
+          {/* Difficulty & Points */}
+          <div className="flex items-center justify-between text-sm text-muted-foreground pt-2">
+            <div className="flex items-center gap-1">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div 
+                  key={i} 
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    i < challenge.difficulty_level ? 'bg-primary' : 'bg-border'
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="font-medium">{challenge.points_reward} pts</span>
+          </div>
+
+          {/* Status Badge & CTA */}
+          <div className="flex items-center gap-2 pt-1">
+            {status === 'completed' ? (
+              <Badge className="bg-success/10 text-success border-success/20">
+                Completed
+              </Badge>
+            ) : status === 'in_progress' ? (
+              <Badge variant="outline" className="border-muted-foreground/30">
+                In Progress
+              </Badge>
+            ) : null}
+            
             {status === 'to_do' && (
-              <>
-                <Button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openChallengeDetail(challenge);
-                  }}
-                  className="flex-1"
-                  size="sm"
-                >
-                  <Play className="w-4 h-4 mr-1" />
-                  Start Solo
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="flex-1"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Users className="w-4 h-4 mr-1" />
-                  Find Partner
-                </Button>
-              </>
+              <Button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openChallengeDetail(challenge);
+                }}
+                className="w-full"
+                size="sm"
+              >
+                Start Challenge
+              </Button>
             )}
             {status === 'in_progress' && (
               <Button 
@@ -328,16 +342,15 @@ const Challenges = () => {
                   userChallenge && completeChallenge(userChallenge.id);
                 }}
                 variant="success"
-                className="flex-1"
+                className="w-full"
                 size="sm"
               >
-                <CheckCircle className="w-4 h-4 mr-1" />
-                Mark Complete
+                Submit Proof
               </Button>
             )}
             {status === 'completed' && (
-              <Button variant="secondary" className="flex-1" size="sm" disabled>
-                Completed!
+              <Button variant="outline" className="w-full" size="sm" disabled>
+                Challenge Complete
               </Button>
             )}
           </div>
