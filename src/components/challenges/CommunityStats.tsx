@@ -137,196 +137,123 @@ const CommunityStats: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <Card className="animate-pulse">
-          <CardHeader>
-            <div className="w-48 h-6 bg-muted rounded"></div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+      <div className="fixed top-[55%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+        <div className="w-[75vw] max-w-md h-[50vh] bg-gradient-to-br from-orange-50 via-white to-pink-50 rounded-3xl shadow-2xl p-6 animate-pulse">
+          <div className="flex flex-col h-full">
+            <div className="w-32 h-6 bg-muted rounded mb-4"></div>
+            <div className="space-y-3 flex-1">
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-muted rounded-full"></div>
-                  <div className="flex-1 space-y-2">
-                    <div className="w-32 h-4 bg-muted rounded"></div>
+                  <div className="w-8 h-8 bg-muted rounded-full"></div>
+                  <div className="flex-1 space-y-1">
                     <div className="w-24 h-3 bg-muted rounded"></div>
+                    <div className="w-16 h-2 bg-muted rounded"></div>
                   </div>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* User Stats Overview */}
-      {user && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
-              Your Stats
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-primary/10 rounded-lg">
-                <div className="text-2xl font-bold text-primary">{userStats.rank || 'Unranked'}</div>
-                <p className="text-sm text-muted-foreground">Global Rank</p>
-              </div>
-              <div className="text-center p-4 bg-success/10 rounded-lg">
-                <div className="text-2xl font-bold text-success">{userStats.totalPoints}</div>
-                <p className="text-sm text-muted-foreground">Total Points</p>
-              </div>
-              <div className="text-center p-4 bg-accent/10 rounded-lg">
-                <div className="text-2xl font-bold text-accent">{userStats.completedChallenges}</div>
-                <p className="text-sm text-muted-foreground">Completed</p>
-              </div>
-              <div className="text-center p-4 bg-secondary/10 rounded-lg">
-                <div className="text-2xl font-bold">{userStats.level}</div>
-                <p className="text-sm text-muted-foreground">Level</p>
-              </div>
+    <div className="fixed top-[55%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+      <div className="w-[75vw] max-w-md h-[50vh] bg-gradient-to-br from-orange-50 via-white to-pink-50 rounded-3xl shadow-2xl overflow-hidden">
+        <div className="flex flex-col h-full p-6">
+          {/* Header with User Stats */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <Trophy className="w-6 h-6 text-orange-500" />
+                Leaderboard
+              </h2>
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <Tabs defaultValue="leaderboard" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
-          <TabsTrigger value="badges">Badges</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="leaderboard" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Trophy className="w-5 h-5" />
-                Global Leaderboard
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {globalLeaderboard.map((player, index) => (
-                  <div 
-                    key={player.user_id} 
-                    className={`flex items-center gap-4 p-3 rounded-lg transition-colors ${
-                      player.user_id === user?.id ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted/50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-center w-8">
-                      {getRankIcon(index + 1)}
+            
+            {user && userStats.rank > 0 && (
+              <div className="bg-gradient-to-r from-orange-100 to-pink-100 rounded-2xl p-3 mb-3">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center font-bold text-orange-600">
+                      #{userStats.rank}
                     </div>
-                    
-                    <Avatar>
-                      <AvatarImage src={player.avatar_url || undefined} />
-                      <AvatarFallback>
-                        {player.display_name?.charAt(0) || player.username?.charAt(0) || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                    
-                    <div className="flex-1">
-                      <p className="font-semibold">{player.display_name || player.username}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {player.completed_challenges} challenges completed
-                      </p>
-                    </div>
-                    
-                    <div className="text-right">
-                      <p className="font-bold text-primary">{player.total_points} pts</p>
-                      <p className="text-sm text-muted-foreground">Level {player.level}</p>
-                    </div>
+                    <span className="font-semibold text-gray-700">Your Rank</span>
                   </div>
-                ))}
+                  <div className="text-right">
+                    <div className="font-bold text-orange-600">{userStats.totalPoints} pts</div>
+                    <div className="text-xs text-gray-600">Level {userStats.level}</div>
+                  </div>
+                </div>
               </div>
-              
-              {globalLeaderboard.length === 0 && (
-                <div className="text-center py-8">
-                  <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No players on the leaderboard yet</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+            )}
+          </div>
 
-        <TabsContent value="badges" className="space-y-4">
-          {/* Earned Badges */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Award className="w-5 h-5" />
-                Your Badges ({userBadges.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {userBadges.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {userBadges.map((badge) => (
-                    <div 
-                      key={badge.id}
-                      className="flex items-center gap-3 p-4 bg-success/10 border border-success/20 rounded-lg"
-                    >
-                      <div className="text-2xl">{badge.icon}</div>
-                      <div>
-                        <p className="font-semibold">{badge.name}</p>
-                        <p className="text-sm text-muted-foreground">{badge.description}</p>
-                      </div>
-                    </div>
-                  ))}
+          {/* Leaderboard List */}
+          <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+            {globalLeaderboard.slice(0, 5).map((player, index) => (
+              <div 
+                key={player.user_id} 
+                className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
+                  player.user_id === user?.id 
+                    ? 'bg-gradient-to-r from-orange-200 to-pink-200 shadow-md' 
+                    : 'bg-white/70 hover:bg-white/90'
+                }`}
+              >
+                <div className="flex items-center justify-center w-8 h-8">
+                  {getRankIcon(index + 1)}
                 </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Award className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No badges earned yet</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Complete challenges to earn your first badge!
+                
+                <Avatar className="w-10 h-10 border-2 border-white shadow-sm">
+                  <AvatarImage src={player.avatar_url || undefined} />
+                  <AvatarFallback className="bg-gradient-to-br from-orange-400 to-pink-400 text-white text-sm font-semibold">
+                    {player.display_name?.charAt(0) || player.username?.charAt(0) || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-gray-800 truncate">
+                    {player.display_name || player.username}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    {player.completed_challenges} challenges
                   </p>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                
+                <div className="text-right">
+                  <p className="font-bold text-sm text-orange-600">{player.total_points}</p>
+                  <p className="text-xs text-gray-500">Lvl {player.level}</p>
+                </div>
+              </div>
+            ))}
+            
+            {globalLeaderboard.length === 0 && (
+              <div className="text-center py-8">
+                <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-500 text-sm">No players yet</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
-          {/* Available Badges */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Available Badges</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {availableBadges.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {availableBadges.map((badge) => (
-                    <div 
-                      key={badge.id}
-                      className="flex items-center gap-3 p-4 bg-muted/30 border border-muted rounded-lg opacity-75"
-                    >
-                      <div className="text-2xl grayscale">{badge.icon}</div>
-                      <div>
-                        <p className="font-semibold">{badge.name}</p>
-                        <p className="text-sm text-muted-foreground">{badge.description}</p>
-                        <Badge variant="outline" className="mt-1">
-                          {badge.points_required} points required
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Trophy className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">All badges earned!</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Congratulations on collecting all available badges!
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {/* Custom Scrollbar Styles */}
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.3);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: linear-gradient(to bottom, rgb(251, 146, 60), rgb(244, 114, 182));
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(to bottom, rgb(249, 115, 22), rgb(236, 72, 153));
+        }
+      `}</style>
     </div>
   );
 };
