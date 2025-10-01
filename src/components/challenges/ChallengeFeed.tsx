@@ -80,6 +80,7 @@ const ChallengeFeed: React.FC = () => {
   const [selectedChallenge, setSelectedChallenge] = useState<any>(null);
   const [selectedUserChallenge, setSelectedUserChallenge] = useState<any>(null);
   const [showChallengeDialog, setShowChallengeDialog] = useState(false);
+  const [showSwipeHint, setShowSwipeHint] = useState(false);
 
   const [{ x, rotate, scale }, api] = useSpring(() => ({
     x: 0,
@@ -88,9 +89,16 @@ const ChallengeFeed: React.FC = () => {
     config: config.wobbly,
   }));
 
+  const [hintAnimation, hintApi] = useSpring(() => ({
+    x: 0,
+    opacity: 0,
+    config: config.gentle,
+  }));
+
   useEffect(() => {
     fetchPosts();
     loadSeenPosts();
+    checkSwipeHint();
   }, []);
 
   useEffect(() => {
@@ -101,6 +109,32 @@ const ChallengeFeed: React.FC = () => {
       }
     }
   }, [currentIndex, posts]);
+
+  const checkSwipeHint = () => {
+    const hintShown = localStorage.getItem('community_swipe_hint_shown');
+    if (!hintShown) {
+      setShowSwipeHint(true);
+      // Show hint animation after 500ms
+      setTimeout(() => {
+        playSwipeHint();
+      }, 500);
+    }
+  };
+
+  const playSwipeHint = () => {
+    hintApi.start({
+      from: { x: 0, opacity: 0 },
+      to: async (next) => {
+        await next({ x: 15, opacity: 1 });
+        await next({ x: 0, opacity: 0 });
+      },
+      config: { tension: 200, friction: 20 },
+      onRest: () => {
+        setShowSwipeHint(false);
+        localStorage.setItem('community_swipe_hint_shown', 'true');
+      },
+    });
+  };
 
   const loadSeenPosts = () => {
     const seen = localStorage.getItem('seenPosts');
@@ -288,7 +322,14 @@ const ChallengeFeed: React.FC = () => {
     }
   };
 
-  const bind = useDrag(({ down, movement: [mx], direction: [xDir], velocity: [vx] }) => {
+  const bind = useDrag(({ down, movement: [mx], direction: [xDir], velocity: [vx], cancel }) => {
+    // Cancel hint animation on first swipe
+    if (showSwipeHint) {
+      setShowSwipeHint(false);
+      hintApi.start({ x: 0, opacity: 0 });
+      localStorage.setItem('community_swipe_hint_shown', 'true');
+    }
+    
     const trigger = vx > 0.2;
     
     if (!down && trigger) {
@@ -468,12 +509,36 @@ const ChallengeFeed: React.FC = () => {
       </div>
 
       {/* Main Card Container */}
-      <div className="flex-1 flex items-center justify-center px-4 pb-24">
+      <div className="flex-1 flex items-center justify-center px-4 pb-24 relative">
+        {/* Swipe Hint Ghost Arrows */}
+        {showSwipeHint && (
+          <>
+            <animated.div
+              style={{
+                x: hintAnimation.x.to(x => -x),
+                opacity: hintAnimation.opacity,
+              }}
+              className="absolute left-8 top-1/2 -translate-y-1/2 z-20 pointer-events-none"
+            >
+              <ChevronLeft className="w-10 h-10 text-orange-400/50" strokeWidth={3} />
+            </animated.div>
+            <animated.div
+              style={{
+                x: hintAnimation.x,
+                opacity: hintAnimation.opacity,
+              }}
+              className="absolute right-8 top-1/2 -translate-y-1/2 z-20 pointer-events-none"
+            >
+              <ChevronRight className="w-10 h-10 text-orange-400/50" strokeWidth={3} />
+            </animated.div>
+          </>
+        )}
+        
         <animated.div
           {...bind()}
           ref={cardRef}
           style={{
-            x,
+            x: showSwipeHint ? hintAnimation.x : x,
             rotate,
             scale,
             touchAction: 'none',
@@ -549,27 +614,34 @@ const ChallengeFeed: React.FC = () => {
               </div>
             </div>
 
-            {/* Floating Action Bar */}
-            <div className="flex-shrink-0 p-5 pt-4 bg-gradient-to-t from-black/10 to-transparent backdrop-blur-[2px]">
-              <div className="flex items-center justify-around">
-                {/* Like Button */}
-                <div className="relative">
-                  <Button 
-                    variant="ghost" 
-                    size="lg"
+            {/* Floating Action Bar - Instagram Style */}
+            <div className="flex-shrink-0 px-5 py-4 bg-gradient-to-t from-black/5 to-transparent">
+              <div className="flex items-center justify-center gap-8">
+                {/* Like Button - Instagram Style */}
+                <div className="relative flex items-center gap-2">
+                  <button
                     onClick={() => setShowReactions(!showReactions)}
-                    className={cn(
-                      "gap-2 transition-all hover:scale-110 active:scale-95 rounded-full bg-white/90 hover:bg-white backdrop-blur-sm shadow-lg border border-white/50 min-w-[44px] min-h-[44px]",
-                      currentPost.likes_count > 0 && "text-red-500"
-                    )}
+                    className="relative group transition-all duration-200 hover:scale-110 active:scale-95 flex items-center justify-center rounded-full min-w-[44px] min-h-[44px]"
                   >
-                    <Heart className={cn("w-6 h-6", currentPost.likes_count > 0 && "fill-current")} />
-                    <span className="text-base font-bold">{currentPost.likes_count}</span>
-                  </Button>
+                    <Heart 
+                      className={cn(
+                        "w-7 h-7 transition-all",
+                        currentPost.likes_count > 0 
+                          ? "fill-red-500 text-red-500" 
+                          : "text-white drop-shadow-md"
+                      )} 
+                      strokeWidth={2.5}
+                    />
+                  </button>
+                  {currentPost.likes_count > 0 && (
+                    <span className="text-sm font-bold text-white drop-shadow-md">
+                      {currentPost.likes_count}
+                    </span>
+                  )}
                   
                   {/* Reaction Picker */}
                   {showReactions && (
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 p-3 bg-white/95 backdrop-blur-md rounded-full shadow-2xl flex gap-2 animate-scale-in border-2 border-white/60 z-50">
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 p-2.5 bg-white/98 backdrop-blur-md rounded-full shadow-2xl flex gap-1 animate-scale-in border border-white/80 z-50">
                       {REACTION_EMOJIS.map((reaction) => (
                         <button
                           key={reaction.emoji}
@@ -577,7 +649,7 @@ const ChallengeFeed: React.FC = () => {
                             toggleLike(currentPost.id);
                             setShowReactions(false);
                           }}
-                          className="text-2xl hover:scale-125 active:scale-110 transition-transform min-w-[44px] min-h-[44px] flex items-center justify-center"
+                          className="text-2xl hover:scale-125 active:scale-110 transition-transform min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-gray-100"
                           title={reaction.label}
                         >
                           {reaction.emoji}
@@ -587,40 +659,48 @@ const ChallengeFeed: React.FC = () => {
                   )}
                 </div>
                 
-                {/* Comment Button */}
-                <Button 
-                  variant="ghost" 
-                  size="lg"
+                {/* Comment Button - Instagram Style */}
+                <button
                   onClick={() => {
                     setShowComments(!showComments);
                     if (!showComments) fetchComments(currentPost.id);
                   }}
-                  className="gap-2 hover:scale-110 active:scale-95 transition-all rounded-full bg-white/90 hover:bg-white backdrop-blur-sm shadow-lg border border-white/50 min-w-[44px] min-h-[44px]"
+                  className="relative group flex items-center gap-2 transition-all duration-200 hover:scale-110 active:scale-95 min-w-[44px] min-h-[44px] justify-center"
                 >
-                  <MessageCircle className="w-6 h-6" />
-                  <span className="text-base font-bold">{currentPost.comments_count}</span>
-                </Button>
+                  <MessageCircle 
+                    className="w-7 h-7 text-white drop-shadow-md" 
+                    strokeWidth={2.5}
+                  />
+                  {currentPost.comments_count > 0 && (
+                    <span className="text-sm font-bold text-white drop-shadow-md">
+                      {currentPost.comments_count}
+                    </span>
+                  )}
+                </button>
                 
-                {/* Challenge/Share Button */}
+                {/* Challenge/Share Button - Instagram Style */}
                 {currentPost.user_challenges?.challenges ? (
-                  <Button 
-                    variant="ghost" 
-                    size="lg"
+                  <button
                     onClick={() => handleOpenChallenge(currentPost)}
-                    className="gap-2 hover:scale-110 active:scale-95 transition-all rounded-full bg-white/90 hover:bg-white backdrop-blur-sm shadow-lg border border-white/50 min-w-[44px] min-h-[44px]"
+                    className="relative group transition-all duration-200 hover:scale-110 active:scale-95 min-w-[44px] min-h-[44px] flex items-center justify-center"
                     title="Open challenge"
                   >
-                    <Compass className="w-6 h-6" />
-                  </Button>
+                    <div className="absolute inset-0 rounded-full bg-white/20 blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <Compass 
+                      className="w-7 h-7 text-white drop-shadow-md relative z-10" 
+                      strokeWidth={2.5}
+                    />
+                  </button>
                 ) : (
-                  <Button 
-                    variant="ghost" 
-                    size="lg"
+                  <button
                     onClick={() => handleShare(currentPost)}
-                    className="hover:scale-110 active:scale-95 transition-all rounded-full bg-white/90 hover:bg-white backdrop-blur-sm shadow-lg border border-white/50 p-3 min-w-[44px] min-h-[44px]"
+                    className="relative group transition-all duration-200 hover:scale-110 active:scale-95 min-w-[44px] min-h-[44px] flex items-center justify-center"
                   >
-                    <Share2 className="w-6 h-6" />
-                  </Button>
+                    <Share2 
+                      className="w-7 h-7 text-white drop-shadow-md" 
+                      strokeWidth={2.5}
+                    />
+                  </button>
                 )}
               </div>
             </div>
