@@ -447,7 +447,7 @@ const ChallengeFeed: React.FC = () => {
   if (loading) {
     return (
       <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-        <div className="w-[90vw] max-w-2xl h-[70vh] bg-gradient-to-br from-[#FF7E5F] via-[#FFB88C] to-[#FFC7A3] rounded-3xl animate-pulse shadow-2xl opacity-30" />
+        <div className="w-[75vw] max-w-md h-[50vh] bg-gradient-to-br from-[#FF7E5F] via-[#FFB88C] to-[#FFC7A3] rounded-3xl animate-pulse shadow-2xl opacity-30" />
       </div>
     );
   }
@@ -542,7 +542,7 @@ const ChallengeFeed: React.FC = () => {
             scale,
             touchAction: 'none',
           }}
-          className="w-[90vw] max-w-2xl h-[70vh] cursor-grab active:cursor-grabbing"
+          className="w-[75vw] max-w-md h-[50vh] cursor-grab active:cursor-grabbing"
           onDoubleClick={() => handleDoubleTap(currentPost.id)}
         >
           <Card className="w-full h-full rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-[#FF8A4C] via-[#FFB08A] to-[#FFD0B8] border-0 relative flex flex-col hover:shadow-[0_20px_60px_-15px_rgba(255,138,76,0.5)] transition-shadow duration-300">
