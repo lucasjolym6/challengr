@@ -8,7 +8,7 @@ const Community = () => {
   const [activeTab, setActiveTab] = useState<'feed' | 'leaderboard'>('feed');
 
   return (
-    <div className="h-[calc(100vh-4rem)]">
+    <div className="h-[calc(100vh-4rem)] overflow-hidden">
       {/* Navigation Tabs - Compact */}
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="h-full flex flex-col">
         <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mt-2 mb-0">
@@ -22,11 +22,11 @@ const Community = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="feed" className="flex-1 mt-0">
+        <TabsContent value="feed" className="flex-1 mt-0 overflow-hidden">
           <ChallengeFeed />
         </TabsContent>
 
-        <TabsContent value="leaderboard" className="flex-1 mt-0">
+        <TabsContent value="leaderboard" className="flex-1 mt-0 overflow-hidden">
           <CommunityStats />
         </TabsContent>
       </Tabs>

@@ -355,7 +355,7 @@ const ChallengeFeed: React.FC = () => {
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center py-4">
-        <div className="w-[90%] max-w-lg h-[60vh] bg-gradient-to-br from-[#FF7E5F] via-[#FFB88C] to-[#FFC7A3] rounded-3xl animate-pulse shadow-2xl opacity-30" />
+        <div className="w-[90%] max-w-lg h-[55vh] bg-gradient-to-br from-[#FF7E5F] via-[#FFB88C] to-[#FFC7A3] rounded-3xl animate-pulse shadow-2xl opacity-30" />
       </div>
     );
   }
@@ -378,7 +378,7 @@ const ChallengeFeed: React.FC = () => {
   const progress = ((currentIndex + 1) / sortedPosts.length) * 100;
 
   return (
-    <div className="relative h-full flex flex-col">
+    <div className="relative h-full flex flex-col overflow-hidden">
       <style>{`
         @keyframes heartPop {
           0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
@@ -426,7 +426,7 @@ const ChallengeFeed: React.FC = () => {
             scale,
             touchAction: 'none',
           }}
-          className="w-[90%] max-w-lg h-[60vh] cursor-grab active:cursor-grabbing"
+          className="w-[90%] max-w-lg h-[55vh] cursor-grab active:cursor-grabbing"
           onDoubleClick={() => handleDoubleTap(currentPost.id)}
         >
           <Card className="w-full h-full rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-[#FF7E5F] via-[#FFB88C] to-[#FFC7A3] border-0 relative flex flex-col">
@@ -496,7 +496,7 @@ const ChallengeFeed: React.FC = () => {
 
             {/* Floating Action Bar */}
             <div className="flex-shrink-0 p-5 pt-4 bg-gradient-to-t from-white/10 to-transparent backdrop-blur-sm">
-              <div className="flex items-center justify-around mb-3">
+              <div className="flex items-center justify-around">
                 {/* Like Button */}
                 <div className="relative">
                   <Button 
@@ -555,14 +555,6 @@ const ChallengeFeed: React.FC = () => {
                 >
                   <Share2 className="w-6 h-6" />
                 </Button>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="h-1.5 bg-white/30 rounded-full overflow-hidden backdrop-blur">
-                <div 
-                  className="h-full bg-white shadow-glow transition-all duration-300"
-                  style={{ width: `${progress}%` }}
-                />
               </div>
             </div>
           </Card>
