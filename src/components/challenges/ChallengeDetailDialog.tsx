@@ -207,20 +207,60 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
   const displayStatus = getDisplayStatus();
 
   const startChallenge = async () => {
-    if (!user) return;
+    if (!user) {
+      console.error('No user found');
+      return;
+    }
+
+    console.log('Starting challenge for user:', user.id);
+    console.log('Challenge ID:', challenge.id);
 
     try {
+      // First, check if user profile exists
+      console.log('Checking if user profile exists...');
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_id, username')
+        .eq('user_id', user.id)
+        .single();
+      
+      console.log('Profile check result:', { profileData, profileError });
+      
+      if (profileError || !profileData) {
+        console.error('User profile not found, creating one...');
+        
+        // Create user profile
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert([{
+            user_id: user.id,
+            username: user.email?.split('@')[0] || `user_${user.id.slice(0, 8)}`,
+            display_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'
+          }])
+          .select()
+          .single();
+        
+        console.log('Profile creation result:', { newProfile, createError });
+        
+        if (createError) {
+          throw new Error(`Failed to create user profile: ${createError.message}`);
+        }
+      }
+
       // Check if user_challenge already exists
+      console.log('Checking for existing user_challenge...');
       const { data: existingChallenges, error: checkError } = await supabase
         .from('user_challenges')
         .select('id, status')
         .eq('user_id', user.id)
         .eq('challenge_id', challenge.id);
       
+      console.log('Existing challenges check result:', { existingChallenges, checkError });
       const existingChallenge = existingChallenges?.[0];
 
       if (existingChallenge) {
         // Update existing challenge status
+        console.log('Updating existing user_challenge:', existingChallenge.id);
         const { error } = await supabase
           .from('user_challenges')
           .update({
@@ -229,16 +269,22 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
           })
           .eq('id', existingChallenge.id);
 
+        console.log('Update result:', { error });
         if (error) throw error;
       } else {
         // Insert new challenge
-        const { error } = await supabase.from('user_challenges').insert([{
+        console.log('Inserting new user_challenge...');
+        const insertData = {
           user_id: user.id,
           challenge_id: challenge.id,
           status: 'in_progress',
           started_at: new Date().toISOString()
-        }]);
-
+        };
+        console.log('Insert data:', insertData);
+        
+        const { error } = await supabase.from('user_challenges').insert([insertData]);
+        
+        console.log('Insert result:', { error });
         if (error) throw error;
       }
 
