@@ -78,6 +78,16 @@ const Challenges = () => {
   
   const [loading, setLoading] = useState(true);
 
+  // Helper function to enrich challenges with category data
+  const enrichChallengesWithCategories = (challenges: any[], categories: any[]) => {
+    return challenges.map(challenge => ({
+      ...challenge,
+      challenge_categories: challenge.category_id ? 
+        categories.find(cat => cat.id === challenge.category_id) || null : 
+        null
+    }));
+  };
+
   // Form state for creating custom challenges
   const [newChallenge, setNewChallenge] = useState({
     title: '',
@@ -93,29 +103,65 @@ const Challenges = () => {
 
   const fetchData = async () => {
     try {
-      const [challengesRes, categoriesRes, userChallengesRes] = await Promise.all([
-        supabase.from('challenges').select(`
+      // First, let's test simple queries without joins
+      console.log('Testing simple queries...');
+      
+      // Test categories first
+      const categoriesRes = await supabase.from('challenge_categories').select('*');
+      console.log('Categories result:', categoriesRes);
+      
+      if (categoriesRes.error) {
+        console.error('Categories error:', categoriesRes.error);
+        // If categories table doesn't exist, create empty array
+        setCategories([]);
+      } else {
+        setCategories(categoriesRes.data || []);
+      }
+      
+      // Test challenges without joins first
+      const challengesSimpleRes = await supabase.from('challenges').select('*').eq('is_active', true);
+      console.log('Simple challenges result:', challengesSimpleRes);
+      
+      if (challengesSimpleRes.error) {
+        console.error('Simple challenges error:', challengesSimpleRes.error);
+        setChallenges([]);
+      } else {
+        // Now try with joins only if simple query works
+        const challengesRes = await supabase.from('challenges').select(`
           *,
-          challenge_categories (name, icon, color),
-          profiles!challenges_created_by_fkey (display_name, username, avatar_url)
-        `).eq('is_active', true),
-        supabase.from('challenge_categories').select('*'),
-        user ? supabase.from('user_challenges').select(`
-          *,
-          challenges (
-            *,
-            challenge_categories (name, icon, color)
-          )
-        `).eq('user_id', user.id) : { data: [], error: null }
-      ]);
-
-      if (challengesRes.error) throw challengesRes.error;
-      if (categoriesRes.error) throw categoriesRes.error;
-      if (userChallengesRes.error) throw userChallengesRes.error;
-
-      setChallenges(challengesRes.data || []);
-      setCategories(categoriesRes.data || []);
-      setUserChallenges(userChallengesRes.data || []);
+          challenge_categories!category_id (name, icon, color),
+          profiles!created_by (display_name, username, avatar_url)
+        `).eq('is_active', true);
+        
+        console.log('Joined challenges result:', challengesRes);
+        
+        if (challengesRes.error) {
+          console.warn('Joined query failed, using simple data:', challengesRes.error);
+          // Use simple data and manually enrich with categories
+          const enrichedChallenges = enrichChallengesWithCategories(
+            challengesSimpleRes.data || [], 
+            categoriesRes.data || []
+          );
+          setChallenges(enrichedChallenges);
+        } else {
+          setChallenges(challengesRes.data || []);
+        }
+      }
+      
+      // Test user challenges
+      const userChallengesRes = user ? await supabase.from('user_challenges').select(`
+        *,
+        challenges (*)
+      `).eq('user_id', user.id) : { data: [], error: null };
+      
+      console.log('User challenges result:', userChallengesRes);
+      
+      if (userChallengesRes.error) {
+        console.error('User challenges error:', userChallengesRes.error);
+        setUserChallenges([]);
+      } else {
+        setUserChallenges(userChallengesRes.data || []);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
