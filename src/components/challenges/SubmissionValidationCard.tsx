@@ -117,22 +117,56 @@ export function SubmissionValidationCard({
       }
 
       // Update user_challenges to mark as completed
-      const { data: existingChallenge } = await supabase
+      console.log('Updating user_challenges for user:', submission.user_id, 'challenge:', submission.challenge_id);
+      const { data: existingChallenge, error: challengeCheckError } = await supabase
         .from('user_challenges')
-        .select('id')
+        .select('id, status')
         .eq('user_id', submission.user_id)
         .eq('challenge_id', submission.challenge_id)
         .maybeSingle();
 
+      console.log('User challenge check result:', { existingChallenge, challengeCheckError });
+
       if (existingChallenge) {
-        await supabase
+        console.log('Updating existing user_challenge:', existingChallenge.id);
+        const { error: updateError } = await supabase
           .from('user_challenges')
           .update({
             status: 'completed',
             validation_status: 'approved',
-            completed_at: new Date().toISOString()
+            completed_at: new Date().toISOString(),
+            validated_at: new Date().toISOString(),
+            validated_by: currentUserId
           })
           .eq('id', existingChallenge.id);
+
+        console.log('User challenge update result:', { updateError });
+        if (updateError) {
+          console.error('Failed to update user_challenges:', updateError);
+          throw updateError;
+        }
+      } else {
+        console.log('No existing user_challenge found, creating one...');
+        // Create user_challenge record if it doesn't exist
+        const { data: newUserChallenge, error: createError } = await supabase
+          .from('user_challenges')
+          .insert([{
+            user_id: submission.user_id,
+            challenge_id: submission.challenge_id,
+            status: 'completed',
+            validation_status: 'approved',
+            completed_at: new Date().toISOString(),
+            validated_at: new Date().toISOString(),
+            validated_by: currentUserId
+          }])
+          .select()
+          .single();
+
+        console.log('User challenge creation result:', { newUserChallenge, createError });
+        if (createError) {
+          console.error('Failed to create user_challenges:', createError);
+          throw createError;
+        }
       }
 
       // Log validation action
@@ -177,6 +211,7 @@ export function SubmissionValidationCard({
     setLoading(true);
     try {
       // Update submission status
+      console.log('Rejecting submission:', submission.id);
       const { error: submissionError } = await supabase
         .from('submissions')
         .update({
@@ -189,7 +224,38 @@ export function SubmissionValidationCard({
         })
         .eq('id', submission.id);
 
+      console.log('Submission rejection result:', { submissionError });
       if (submissionError) throw submissionError;
+
+      // Update user_challenges to mark as rejected
+      console.log('Updating user_challenges for rejection...');
+      const { data: existingChallenge, error: challengeCheckError } = await supabase
+        .from('user_challenges')
+        .select('id, status')
+        .eq('user_id', submission.user_id)
+        .eq('challenge_id', submission.challenge_id)
+        .maybeSingle();
+
+      console.log('User challenge check result for rejection:', { existingChallenge, challengeCheckError });
+
+      if (existingChallenge) {
+        console.log('Updating existing user_challenge for rejection:', existingChallenge.id);
+        const { error: updateError } = await supabase
+          .from('user_challenges')
+          .update({
+            validation_status: 'rejected',
+            validated_at: new Date().toISOString(),
+            validated_by: currentUserId,
+            rejection_reason: rejectionReason,
+            validator_comment: rejectionComment
+          })
+          .eq('id', existingChallenge.id);
+
+        console.log('User challenge rejection update result:', { updateError });
+        if (updateError) {
+          console.error('Failed to update user_challenges for rejection:', updateError);
+        }
+      }
 
       // Increment defeat counter
       const { data: existingDefeat } = await supabase
