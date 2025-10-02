@@ -169,12 +169,26 @@ export function SubmissionValidationCard({
         }
       }
 
+      // Update the community post to mark it as verified
+      console.log('Updating community post to verified...');
+      const { error: postUpdateError } = await supabase
+        .from('posts')
+        .update({
+          verified: true
+        })
+        .eq('user_challenge_id', existingChallenge?.id || newUserChallenge?.id);
+
+      console.log('Post verification update result:', { postUpdateError });
+      if (postUpdateError) {
+        console.warn('Failed to update post verification status:', postUpdateError);
+      }
+
       // Log validation action
       await supabase
         .from('validation_audit')
         .insert([{
           submission_id: submission.id,
-          user_challenge_id: existingChallenge?.id || null,
+          user_challenge_id: existingChallenge?.id || newUserChallenge?.id || null,
           validator_id: currentUserId,
           action: 'approved',
           comment: validatorComment
@@ -255,6 +269,20 @@ export function SubmissionValidationCard({
         if (updateError) {
           console.error('Failed to update user_challenges for rejection:', updateError);
         }
+      }
+
+      // Update the community post to keep it unverified (or remove verification if it was verified)
+      console.log('Updating community post verification status for rejection...');
+      const { error: postUpdateError } = await supabase
+        .from('posts')
+        .update({
+          verified: false
+        })
+        .eq('user_challenge_id', existingUserChallenge?.id);
+
+      console.log('Post rejection update result:', { postUpdateError });
+      if (postUpdateError) {
+        console.warn('Failed to update post verification status for rejection:', postUpdateError);
       }
 
       // Increment defeat counter

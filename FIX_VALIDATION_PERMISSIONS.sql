@@ -90,6 +90,39 @@ USING (
   )
 );
 
+-- Allow validators to update posts for verification
+DROP POLICY IF EXISTS "Users can update their own posts" ON public.posts;
+
+CREATE POLICY "Users can update their own posts"
+ON public.posts
+FOR UPDATE
+USING (auth.uid() = user_id);
+
+-- Allow validators to update posts for verification purposes
+CREATE POLICY "Validators can update posts for verification"
+ON public.posts
+FOR UPDATE
+USING (
+  -- Validators can update posts if they can validate the related user_challenge
+  EXISTS (
+    SELECT 1 FROM public.user_challenges uc
+    JOIN public.challenges c ON c.id = uc.challenge_id
+    WHERE uc.id = posts.user_challenge_id
+    AND (
+      -- Validator is challenge creator
+      c.created_by = auth.uid()
+      OR
+      -- Validator has approved submission for this challenge
+      EXISTS (
+        SELECT 1 FROM public.submissions s
+        WHERE s.challenge_id = uc.challenge_id
+        AND s.user_id = auth.uid()
+        AND s.status = 'approved'
+      )
+    )
+  )
+);
+
 -- Create a function to check if user can validate (for debugging)
 CREATE OR REPLACE FUNCTION public.debug_can_validate(user_id_param UUID, challenge_id_param UUID)
 RETURNS TABLE(
