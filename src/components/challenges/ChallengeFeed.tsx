@@ -62,7 +62,7 @@ const ChallengeFeed: React.FC = () => {
     x: 0,
     rotate: 0,
     scale: 1,
-    config: config.wobbly,
+    config: { tension: 300, friction: 30 },
   }));
 
   const [hintAnimation, hintApi] = useSpring(() => ({
@@ -253,21 +253,41 @@ const ChallengeFeed: React.FC = () => {
 
   const nextCard = () => {
     if (currentIndex < getSortedChallenges().length - 1) {
-      api.start({ x: -300, rotate: -20, scale: 0.8 });
+      api.start({ 
+        x: -400, 
+        rotate: -15, 
+        scale: 0.85,
+        config: { tension: 280, friction: 25 }
+      });
       setTimeout(() => {
         setCurrentIndex(prev => prev + 1);
-        api.start({ x: 0, rotate: 0, scale: 1 });
-      }, 200);
+        api.start({ 
+          x: 0, 
+          rotate: 0, 
+          scale: 1,
+          config: { tension: 280, friction: 25 }
+        });
+      }, 250);
     }
   };
 
   const prevCard = () => {
     if (currentIndex > 0) {
-      api.start({ x: 300, rotate: 20, scale: 0.8 });
+      api.start({ 
+        x: 400, 
+        rotate: 15, 
+        scale: 0.85,
+        config: { tension: 280, friction: 25 }
+      });
       setTimeout(() => {
         setCurrentIndex(prev => prev - 1);
-        api.start({ x: 0, rotate: 0, scale: 1 });
-      }, 200);
+        api.start({ 
+          x: 0, 
+          rotate: 0, 
+          scale: 1,
+          config: { tension: 280, friction: 25 }
+        });
+      }, 250);
     }
   };
 
@@ -335,8 +355,8 @@ const ChallengeFeed: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="fixed top-[55%] left-1/2 -translate-x-1/2 -translate-y-1/2">
-        <div className="w-[75vw] max-w-md h-[50vh] bg-gradient-to-br from-orange-400/30 via-pink-400/30 to-purple-400/30 rounded-3xl animate-pulse shadow-2xl" />
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+        <div className="w-[85vw] max-w-lg h-[65vh] bg-gradient-to-br from-orange-400/30 via-pink-400/30 to-purple-400/30 rounded-3xl animate-pulse shadow-2xl" />
       </div>
     );
   }
@@ -358,36 +378,36 @@ const ChallengeFeed: React.FC = () => {
 
   return (
     <div className="relative h-full overflow-hidden">
-      {/* Fixed View Mode Toggle */}
-      <div className="fixed top-[140px] left-1/2 -translate-x-1/2 z-30 flex items-center justify-center gap-3">
+      {/* Fixed View Mode Toggle - Higher and Bolder */}
+      <div className="fixed top-20 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center gap-4">
         <Button
           variant={viewMode === 'trending' ? 'default' : 'outline'}
-          size="sm"
+          size="lg"
           onClick={() => {
             setViewMode('trending');
             setCurrentIndex(0);
           }}
-          className="gap-2 rounded-full shadow-md"
+          className="gap-2 rounded-full shadow-lg font-bold px-6 py-3"
         >
-          <Flame className="w-4 h-4" />
+          <Flame className="w-5 h-5" />
           Trending
         </Button>
         <Button
           variant={viewMode === 'latest' ? 'default' : 'outline'}
-          size="sm"
+          size="lg"
           onClick={() => {
             setViewMode('latest');
             setCurrentIndex(0);
           }}
-          className="gap-2 rounded-full shadow-md"
+          className="gap-2 rounded-full shadow-lg font-bold px-6 py-3"
         >
-          <Clock className="w-4 h-4" />
+          <Clock className="w-5 h-5" />
           Latest
         </Button>
       </div>
 
       {/* Fixed Card Container */}
-      <div className="fixed top-[55%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
         {/* Swipe Hint */}
         {showSwipeHint && (
           <>
@@ -396,18 +416,18 @@ const ChallengeFeed: React.FC = () => {
                 x: hintAnimation.x.to(x => -x),
                 opacity: hintAnimation.opacity,
               }}
-              className="absolute left-8 top-1/2 -translate-y-1/2 z-20 pointer-events-none"
+              className="absolute -left-14 top-1/2 -translate-y-1/2 z-20 pointer-events-none"
             >
-              <ChevronLeft className="w-10 h-10 text-orange-400/50" strokeWidth={3} />
+              <ChevronLeft className="w-8 h-8 text-orange-400/60" strokeWidth={2.5} />
             </animated.div>
             <animated.div
               style={{
                 x: hintAnimation.x,
                 opacity: hintAnimation.opacity,
               }}
-              className="absolute right-8 top-1/2 -translate-y-1/2 z-20 pointer-events-none"
+              className="absolute -right-14 top-1/2 -translate-y-1/2 z-20 pointer-events-none"
             >
-              <ChevronRight className="w-10 h-10 text-orange-400/50" strokeWidth={3} />
+              <ChevronRight className="w-8 h-8 text-orange-400/60" strokeWidth={2.5} />
             </animated.div>
           </>
         )}
@@ -421,7 +441,8 @@ const ChallengeFeed: React.FC = () => {
             scale,
             touchAction: 'none',
           }}
-          className="w-[75vw] max-w-md h-[50vh] cursor-grab active:cursor-grabbing"
+          className="w-[85vw] max-w-lg h-[65vh] cursor-grab active:cursor-grabbing"
+          onClick={() => handleViewChallenge(currentChallenge.id)}
         >
           <Card className="w-full h-full rounded-3xl overflow-hidden shadow-2xl border-0 relative flex flex-col">
             {/* Full-bleed Background Image with Overlay */}
@@ -435,8 +456,8 @@ const ChallengeFeed: React.FC = () => {
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-orange-400 via-pink-400 to-purple-400" />
               )}
-              {/* Dark overlay for readability */}
-              <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/50 to-black/70" />
+              {/* Stronger dark overlay for better readability */}
+              <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/60 to-black/75" />
             </div>
 
             {/* Content */}
@@ -455,81 +476,81 @@ const ChallengeFeed: React.FC = () => {
                 {currentChallenge.challenge_categories && (
                   <Badge 
                     variant="secondary" 
-                    className="bg-white/20 text-white backdrop-blur-md border-white/30"
+                    className="bg-white/25 text-white backdrop-blur-md border-white/40"
                   >
                     {currentChallenge.challenge_categories.name}
                   </Badge>
                 )}
 
-                {/* Challenge Title */}
-                <h2 className="text-2xl font-bold text-white drop-shadow-lg leading-tight">
+                {/* Challenge Title - Big & Bold */}
+                <h2 className="text-3xl font-black text-white drop-shadow-2xl leading-tight">
                   {currentChallenge.title}
                 </h2>
 
-                {/* Quick Stats */}
-                <div className="flex items-center gap-4 text-white/90">
+                {/* Quick Stats - Compact with emojis */}
+                <div className="flex items-center gap-4 text-white/95">
                   <div className="flex items-center gap-1.5">
                     <Users className="w-4 h-4" />
-                    <span className="text-sm font-semibold">{currentChallenge.participants_count}</span>
+                    <span className="text-sm font-bold">{currentChallenge.participants_count}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Heart className="w-4 h-4" />
-                    <span className="text-sm font-semibold">{currentChallenge.total_likes}</span>
+                    <span className="text-sm font-bold">{currentChallenge.total_likes}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <MessageCircle className="w-4 h-4" />
-                    <span className="text-sm font-semibold">{currentChallenge.total_comments}</span>
+                    <span className="text-sm font-bold">{currentChallenge.total_comments}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Center Highlight - Social Echo */}
+              {/* Center Highlight - Social Echo in rounded box */}
               <div className="flex-1 flex items-center justify-center py-6">
-                <div className="bg-white/15 backdrop-blur-xl border border-white/30 rounded-2xl p-5 shadow-2xl max-w-full">
+                <div className="bg-white/20 backdrop-blur-xl border-2 border-white/40 rounded-3xl p-6 shadow-2xl max-w-full">
                   {/* Activity Spike */}
                   {currentChallenge.activity_spike && (
-                    <div className="flex items-start gap-3 mb-4">
-                      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center">
-                        <TrendingUp className="w-5 h-5 text-white" />
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center shadow-lg">
+                        <TrendingUp className="w-6 h-6 text-white" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-white font-bold text-lg">
-                          🔥 {currentChallenge.activity_spike.count} new participants today!
+                        <p className="text-white font-black text-xl">
+                          🔥 {currentChallenge.activity_spike.count} nouveaux aujourd'hui!
                         </p>
-                        <p className="text-white/80 text-sm">This challenge is on fire</p>
+                        <p className="text-white/90 text-sm mt-1">Ce défi explose 🎉</p>
                       </div>
                     </div>
                   )}
 
                   {/* Recent Participant */}
                   {currentChallenge.recent_participant && !currentChallenge.activity_spike && (
-                    <div className="flex items-start gap-3 mb-4">
-                      <Avatar className="w-10 h-10 border-2 border-white/60">
+                    <div className="flex items-start gap-3">
+                      <Avatar className="w-12 h-12 border-3 border-white/70 shadow-lg">
                         <AvatarImage src={currentChallenge.recent_participant.avatar_url || undefined} />
-                        <AvatarFallback className="bg-gradient-to-br from-purple-400 to-pink-400 text-white">
+                        <AvatarFallback className="bg-gradient-to-br from-purple-400 to-pink-400 text-white font-bold text-lg">
                           {currentChallenge.recent_participant.username.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <p className="text-white font-bold">
+                        <p className="text-white font-bold text-lg break-words">
                           <span className="text-orange-300">{currentChallenge.recent_participant.username}</span>
-                          {' '}{currentChallenge.recent_participant.action === 'completed' ? 'completed' : 'joined'} this challenge
+                          {' '}{currentChallenge.recent_participant.action === 'completed' ? 'a complété ⭐' : 'a rejoint 🎉'}
                         </p>
-                        <p className="text-white/70 text-xs">{formatTimeAgo(currentChallenge.recent_participant.created_at)}</p>
+                        <p className="text-white/80 text-xs mt-1">{formatTimeAgo(currentChallenge.recent_participant.created_at)}</p>
                       </div>
-                      <Sparkles className="w-5 h-5 text-yellow-300 flex-shrink-0" />
+                      <Sparkles className="w-6 h-6 text-yellow-300 flex-shrink-0" />
                     </div>
                   )}
 
                   {/* Latest Comment */}
-                  {currentChallenge.latest_comment && (
+                  {currentChallenge.latest_comment && !currentChallenge.recent_participant && !currentChallenge.activity_spike && (
                     <div className="relative">
-                      <div className="absolute -left-2 top-3 w-0 h-0 border-t-8 border-r-8 border-b-8 border-transparent border-r-white/20" />
-                      <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm">
-                        <p className="text-white/90 text-sm italic line-clamp-2">
-                          "{currentChallenge.latest_comment.content}"
+                      <div className="absolute -left-4 top-4 w-0 h-0 border-t-[10px] border-r-[12px] border-b-[10px] border-transparent border-r-white/25" />
+                      <div className="bg-white/15 rounded-2xl p-4 backdrop-blur-sm">
+                        <p className="text-white font-medium text-base italic line-clamp-3 break-words">
+                          💬 "{currentChallenge.latest_comment.content}"
                         </p>
-                        <p className="text-white/60 text-xs mt-1">
+                        <p className="text-white/70 text-sm mt-2 font-semibold">
                           — {currentChallenge.latest_comment.username}
                         </p>
                       </div>
@@ -538,14 +559,19 @@ const ChallengeFeed: React.FC = () => {
                 </div>
               </div>
 
-              {/* Footer CTA */}
-              <div className="flex-shrink-0">
+              {/* Footer CTA - Small Secondary Button */}
+              <div className="flex-shrink-0 flex justify-end">
                 <Button
-                  onClick={() => handleViewChallenge(currentChallenge.id)}
-                  className="w-full bg-white hover:bg-white/90 text-orange-600 font-bold py-6 rounded-2xl shadow-xl gap-2 text-lg group"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleViewChallenge(currentChallenge.id);
+                  }}
+                  variant="secondary"
+                  size="sm"
+                  className="bg-white/30 hover:bg-white/40 text-white border border-white/50 backdrop-blur-md font-semibold rounded-full gap-2 px-4 py-2 shadow-lg"
                 >
-                  Voir le fil du défi
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  Voir le fil
+                  <ArrowRight className="w-4 h-4" />
                 </Button>
               </div>
             </div>
@@ -553,25 +579,21 @@ const ChallengeFeed: React.FC = () => {
         </animated.div>
       </div>
 
-      {/* Navigation Arrows */}
-      <Button
-        variant="outline"
-        size="icon"
+      {/* Small Subtle Navigation Arrows - Aligned with card */}
+      <button
         onClick={prevCard}
         disabled={currentIndex === 0}
-        className="fixed left-4 md:left-8 top-1/2 -translate-y-1/2 z-30 w-14 h-14 rounded-full shadow-2xl bg-white/95 hover:bg-white backdrop-blur hover:scale-110 transition-all disabled:opacity-30 disabled:pointer-events-none border-2 border-orange-200"
+        className="fixed left-2 md:left-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 flex items-center justify-center rounded-full bg-white/70 hover:bg-white/90 backdrop-blur-sm shadow-md transition-all disabled:opacity-20 disabled:pointer-events-none"
       >
-        <ChevronLeft className="w-6 h-6 text-orange-600" />
-      </Button>
-      <Button
-        variant="outline"
-        size="icon"
+        <ChevronLeft className="w-5 h-5 text-gray-800" strokeWidth={2.5} />
+      </button>
+      <button
         onClick={nextCard}
         disabled={currentIndex === sortedChallenges.length - 1}
-        className="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 z-30 w-14 h-14 rounded-full shadow-2xl bg-white/95 hover:bg-white backdrop-blur hover:scale-110 transition-all disabled:opacity-30 disabled:pointer-events-none border-2 border-orange-200"
+        className="fixed right-2 md:right-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 flex items-center justify-center rounded-full bg-white/70 hover:bg-white/90 backdrop-blur-sm shadow-md transition-all disabled:opacity-20 disabled:pointer-events-none"
       >
-        <ChevronRight className="w-6 h-6 text-orange-600" />
-      </Button>
+        <ChevronRight className="w-5 h-5 text-gray-800" strokeWidth={2.5} />
+      </button>
     </div>
   );
 };
