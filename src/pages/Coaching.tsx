@@ -42,7 +42,7 @@ const Coaching = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('coaching_content')
-        .select('*, challenge_categories(name)')
+        .select('*, challenge_categories!category_id(name)')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data;

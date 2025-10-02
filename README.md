@@ -1,227 +1,73 @@
-# 🏆 Challengr - Community Challenge Platform
+# Welcome to your Lovable project
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
-[![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
+## Project info
 
-> **Join exciting challenges, track your progress, and connect with a community of achievers. From sports to arts, level up your skills with Challengr!**
+**URL**: https://lovable.dev/projects/696123dc-e23d-4cad-80ef-bdc7115342bb
 
-## 🚀 Features
+## How can I edit this code?
 
-### 🎯 Challenge System
-- **Multiple Categories**: Sports, Drawing, Music, Cooking, Writing, Coding, Gardening
-- **Difficulty Levels**: From Beginner to Expert (5 levels)
-- **Custom Challenges**: Create your own challenges with media support
-- **Progress Tracking**: Real-time progress monitoring and statistics
-- **Points & Rewards**: Earn points for completing challenges
-- **User Levels**: Level up based on your achievements
+There are several ways of editing your application.
 
-### 👥 Community Features
-- **Activity Feed**: See real-time community interactions and achievements
-- **Challenge Discussions**: Comment and interact with other participants
-- **Validation System**: Community-driven validation of challenge submissions
-- **User Profiles**: Track your progress and showcase achievements
-- **Social Interactions**: Like, comment, and share challenge posts
+**Use Lovable**
 
-### 🎓 Coaching & Premium Content
-- **Expert Coaching**: Access premium coaching content and tutorials
-- **Video & Image Tutorials**: Rich media content for skill development
-- **Category-Specific Guidance**: Tailored coaching for each challenge category
-- **Premium Features**: Advanced content for serious learners
+Simply visit the [Lovable Project](https://lovable.dev/projects/696123dc-e23d-4cad-80ef-bdc7115342bb) and start prompting.
 
-### 🛡️ Admin & Moderation
-- **Content Management**: Admin dashboard for managing challenges and coaching content
-- **Validation Queue**: Moderation system for user submissions
-- **User Management**: Comprehensive user and profile management
-- **Analytics**: Track community engagement and challenge completion rates
+Changes made via Lovable will be committed automatically to this repo.
 
-## 🛠️ Tech Stack
+**Use your preferred IDE**
 
-### Frontend
-- **React 18** - Modern React with hooks and functional components
-- **TypeScript** - Type-safe development
-- **Vite** - Lightning-fast build tool and dev server
-- **Tailwind CSS** - Utility-first CSS framework
-- **shadcn/ui** - Beautiful, accessible UI components
-- **React Router** - Client-side routing
-- **React Query** - Data fetching and caching
-- **React Hook Form** - Form management with validation
+If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
 
-### Backend & Database
-- **Supabase** - Backend-as-a-Service with PostgreSQL
-- **Row Level Security (RLS)** - Database-level security
-- **Real-time subscriptions** - Live updates and notifications
-- **Authentication** - Secure user management
-- **File Storage** - Media upload and management
+The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
-### Development Tools
-- **ESLint** - Code linting and quality
-- **TypeScript** - Static type checking
-- **PostCSS** - CSS processing
-- **Lovable Integration** - AI-assisted development
+Follow these steps:
 
-## 🚀 Quick Start
+```sh
+# Step 1: Clone the repository using the project's Git URL.
+git clone <YOUR_GIT_URL>
 
-### Prerequisites
-- **Node.js** (v16 or higher)
-- **npm** or **yarn**
-- **Supabase account** (for backend services)
+# Step 2: Navigate to the project directory.
+cd <YOUR_PROJECT_NAME>
 
-### Installation
+# Step 3: Install the necessary dependencies.
+npm i
 
-1. **Clone the repository**
-   ```bash
-   git clone <your-repository-url>
-   cd challengr
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables**
-   ```bash
-   cp .env.example .env.local
-   ```
-   Fill in your Supabase credentials in `.env.local`
-
-4. **Start the development server**
-   ```bash
-   npm run dev
-   ```
-
-5. **Open your browser**
-   Navigate to `http://localhost:8080`
-
-### Database Setup
-
-1. **Import the database schema**
-   - Navigate to your Supabase project dashboard
-   - Go to SQL Editor
-   - Run the SQL files in `database-export/` in order:
-     - `00_full_export.sql` (schema and static data)
-     - `01_transaction_data.sql` (transactional data)
-
-2. **Set up authentication trigger**
-   ```sql
-   -- Create trigger for new user profiles
-   CREATE TRIGGER on_auth_user_created
-     AFTER INSERT ON auth.users
-     FOR EACH ROW EXECUTE PROCEDURE handle_new_user();
-   ```
-
-## 📦 Available Scripts
-
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Build for production |
-| `npm run build:dev` | Build for development |
-| `npm run preview` | Preview production build |
-| `npm run lint` | Run ESLint |
-
-## 🏗️ Project Structure
-
-```
-challengr/
-├── src/
-│   ├── components/          # Reusable UI components
-│   │   ├── auth/           # Authentication components
-│   │   ├── challenges/     # Challenge-related components
-│   │   ├── coaching/       # Coaching system components
-│   │   ├── layout/         # Layout and navigation
-│   │   ├── messages/       # Messaging system
-│   │   ├── premium/        # Premium features
-│   │   └── ui/             # shadcn/ui components
-│   ├── pages/              # Page components
-│   ├── hooks/              # Custom React hooks
-│   ├── lib/                # Utility functions
-│   ├── integrations/       # External service integrations
-│   └── assets/             # Static assets
-├── supabase/               # Database migrations and functions
-├── public/                 # Public assets
-└── database-export/        # Database schema and data
+# Step 4: Start the development server with auto-reloading and an instant preview.
+npm run dev
 ```
 
-## 🎨 Key Components
+**Edit a file directly in GitHub**
 
-### Challenge System
-- **ChallengeDetailDialog** - Detailed view of challenges
-- **CreateChallengeDialog** - Create custom challenges
-- **ChallengeFeed** - Community activity feed
-- **ValidationQueue** - Submission validation system
+- Navigate to the desired file(s).
+- Click the "Edit" button (pencil icon) at the top right of the file view.
+- Make your changes and commit the changes.
 
-### User Experience
-- **AuthProvider** - Authentication context and management
-- **Layout** - Main application layout with navigation
-- **Home** - Dashboard with user stats and active challenges
-- **Profile** - User profile management
+**Use GitHub Codespaces**
 
-### Admin Features
-- **AdminDashboard** - Administrative controls
-- **AdminCoachingManager** - Manage coaching content
-- **ValidationQueue** - Moderate user submissions
+- Navigate to the main page of your repository.
+- Click on the "Code" button (green button) near the top right.
+- Select the "Codespaces" tab.
+- Click on "New codespace" to launch a new Codespace environment.
+- Edit files directly within the Codespace and commit and push your changes once you're done.
 
-## 🔧 Configuration
+## What technologies are used for this project?
 
-### Environment Variables
-```env
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
+This project is built with:
 
-### Supabase Configuration
-- **Authentication**: Email/password, social logins
-- **Database**: PostgreSQL with RLS policies
-- **Storage**: File uploads for challenge media
-- **Real-time**: Live updates for community features
+- Vite
+- TypeScript
+- React
+- shadcn-ui
+- Tailwind CSS
 
-## 🚀 Deployment
+## How can I deploy this project?
 
-### Production Build
-```bash
-npm run build
-```
+Simply open [Lovable](https://lovable.dev/projects/696123dc-e23d-4cad-80ef-bdc7115342bb) and click on Share -> Publish.
 
-### Deploy to Vercel/Netlify
-1. Connect your repository
-2. Set environment variables
-3. Deploy automatically on push
+## Can I connect a custom domain to my Lovable project?
 
-### Supabase Production
-1. Create production Supabase project
-2. Import database schema
-3. Update environment variables
-4. Configure authentication providers
+Yes, you can!
 
-## 🤝 Contributing
+To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **shadcn/ui** for the beautiful component library
-- **Supabase** for the excellent backend platform
-- **Lovable** for AI-assisted development tools
-- **React community** for the amazing ecosystem
-
-## 📞 Support
-
-For support, email support@challengr.app or join our community Discord.
-
----
-
-<div align="center">
-  <strong>Built with ❤️ by the Challengr team</strong>
-</div>
+Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)

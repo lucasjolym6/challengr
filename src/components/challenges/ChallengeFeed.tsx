@@ -98,7 +98,7 @@ const ChallengeFeed: React.FC = () => {
           id,
           title,
           image_url,
-          challenge_categories (name, color)
+          challenge_categories!category_id (name, color)
         `)
         .eq('is_active', true)
         .order('created_at', { ascending: false })

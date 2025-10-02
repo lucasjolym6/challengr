@@ -102,7 +102,7 @@ const ChallengeDiscussion: React.FC<ChallengeDiscussionProps> = ({
           title,
           description,
           image_url,
-          challenge_categories (name, color)
+          challenge_categories!category_id (name, color)
         `)
         .eq('id', challengeId)
         .single();
