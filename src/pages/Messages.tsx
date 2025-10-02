@@ -82,9 +82,11 @@ export default function Messages() {
     if (selectedFriend && user) {
       fetchMessages();
       
-      // Set up realtime subscription for new messages
+      // Set up realtime subscription for new messages (simplified)
+      console.log('Setting up realtime subscription for user:', user.id);
+      
       const channel = supabase
-        .channel('messages')
+        .channel(`messages_${user.id}`)
         .on(
           'postgres_changes',
           {
@@ -94,17 +96,28 @@ export default function Messages() {
             filter: `receiver_id=eq.${user.id}`
           },
           (payload) => {
+            console.log('Realtime message received:', payload);
             const newMsg = payload.new as Message;
             const friendId = selectedFriend.profiles.user_id;
             
             if (newMsg.sender_id === friendId) {
+              console.log('Adding new message to chat:', newMsg);
               setMessages(prev => [...prev, newMsg]);
               scrollToBottom();
               markAsRead(newMsg.id);
             }
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log('Realtime subscription status:', status);
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ Realtime subscription successful');
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('❌ Realtime subscription failed - WebSocket connection error');
+          } else if (status === 'TIMED_OUT') {
+            console.warn('⏰ Realtime subscription timed out');
+          }
+        });
 
       return () => {
         supabase.removeChannel(channel);
@@ -198,21 +211,10 @@ export default function Messages() {
     console.log('Fetching messages between:', { user_id: user.id, friend_id: friendId });
 
     try {
+      // First, get messages without joins to avoid relationship issues
       const { data, error } = await supabase
         .from('messages')
-        .select(`
-          *,
-          challenges (
-            id,
-            title,
-            description,
-            image_url,
-            challenge_categories (
-              name,
-              icon
-            )
-          )
-        `)
+        .select('*')
         .or(`and(sender_id.eq.${user.id},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${user.id})`)
         .order('created_at', { ascending: true });
 
@@ -228,8 +230,54 @@ export default function Messages() {
         return;
       }
 
-      console.log('Setting messages:', data || []);
-      setMessages(data || []);
+      // If we have messages with challenge_id, fetch challenge details separately
+      if (data && data.length > 0) {
+        const challengeIds = data
+          .filter(msg => msg.challenge_id)
+          .map(msg => msg.challenge_id);
+
+        if (challengeIds.length > 0) {
+          console.log('Fetching challenge details for:', challengeIds);
+          
+          const { data: challengesData, error: challengesError } = await supabase
+            .from('challenges')
+            .select(`
+              id,
+              title,
+              description,
+              image_url,
+              challenge_categories!category_id (
+                name,
+                icon
+              )
+            `)
+            .in('id', challengeIds);
+
+          console.log('Challenges fetch result:', { challengesData, challengesError });
+
+          if (!challengesError && challengesData) {
+            // Merge challenge data with messages
+            const enrichedMessages = data.map(msg => ({
+              ...msg,
+              challenges: msg.challenge_id 
+                ? challengesData.find(c => c.id === msg.challenge_id)
+                : null
+            }));
+            
+            console.log('Setting enriched messages:', enrichedMessages);
+            setMessages(enrichedMessages);
+          } else {
+            console.log('Setting messages without challenge details:', data);
+            setMessages(data);
+          }
+        } else {
+          console.log('Setting messages without challenges:', data);
+          setMessages(data);
+        }
+      } else {
+        console.log('No messages found, setting empty array');
+        setMessages([]);
+      }
 
       // Mark unread messages as read
       const unreadIds = data?.filter(m => m.receiver_id === user.id && !m.read_at).map(m => m.id) || [];
