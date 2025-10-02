@@ -229,17 +229,17 @@ export function SubmissionValidationCard({
 
       // Update user_challenges to mark as rejected
       console.log('Updating user_challenges for rejection...');
-      const { data: existingChallenge, error: challengeCheckError } = await supabase
+      const { data: existingUserChallenge, error: challengeCheckError } = await supabase
         .from('user_challenges')
         .select('id, status')
         .eq('user_id', submission.user_id)
         .eq('challenge_id', submission.challenge_id)
         .maybeSingle();
 
-      console.log('User challenge check result for rejection:', { existingChallenge, challengeCheckError });
+      console.log('User challenge check result for rejection:', { existingUserChallenge, challengeCheckError });
 
-      if (existingChallenge) {
-        console.log('Updating existing user_challenge for rejection:', existingChallenge.id);
+      if (existingUserChallenge) {
+        console.log('Updating existing user_challenge for rejection:', existingUserChallenge.id);
         const { error: updateError } = await supabase
           .from('user_challenges')
           .update({
@@ -249,7 +249,7 @@ export function SubmissionValidationCard({
             rejection_reason: rejectionReason,
             validator_comment: rejectionComment
           })
-          .eq('id', existingChallenge.id);
+          .eq('id', existingUserChallenge.id);
 
         console.log('User challenge rejection update result:', { updateError });
         if (updateError) {
