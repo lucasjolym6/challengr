@@ -103,67 +103,74 @@ const Challenges = () => {
 
   const fetchData = async () => {
     try {
-      // First, let's test simple queries without joins
-      console.log('Testing simple queries...');
+      console.log('Fetching data...');
       
-      // Test categories first
-      const categoriesRes = await supabase.from('challenge_categories').select('*');
-      console.log('Categories result:', categoriesRes);
-      
-      if (categoriesRes.error) {
-        console.error('Categories error:', categoriesRes.error);
-        // If categories table doesn't exist, create empty array
-        setCategories([]);
-      } else {
-        setCategories(categoriesRes.data || []);
-      }
-      
-      // Test challenges without joins first
-      const challengesSimpleRes = await supabase.from('challenges').select('*').eq('is_active', true);
-      console.log('Simple challenges result:', challengesSimpleRes);
-      
-      if (challengesSimpleRes.error) {
-        console.error('Simple challenges error:', challengesSimpleRes.error);
-        setChallenges([]);
-      } else {
-        // Now try with joins only if simple query works
-        const challengesRes = await supabase.from('challenges').select(`
-          *,
-          challenge_categories!category_id (name, icon, color),
-          profiles!created_by (display_name, username, avatar_url)
-        `).eq('is_active', true);
-        
-        console.log('Joined challenges result:', challengesRes);
-        
-        if (challengesRes.error) {
-          console.warn('Joined query failed, using simple data:', challengesRes.error);
-          // Use simple data and manually enrich with categories
-          const enrichedChallenges = enrichChallengesWithCategories(
-            challengesSimpleRes.data || [], 
-            categoriesRes.data || []
-          );
-          setChallenges(enrichedChallenges);
+      // Always try to fetch categories first
+      let categories = [];
+      try {
+        const categoriesRes = await supabase.from('challenge_categories').select('*');
+        if (categoriesRes.error) {
+          console.warn('Categories table may not exist:', categoriesRes.error);
         } else {
-          setChallenges(challengesRes.data || []);
+          categories = categoriesRes.data || [];
+          setCategories(categories);
         }
+      } catch (error) {
+        console.warn('Failed to fetch categories:', error);
       }
       
-      // Test user challenges
-      const userChallengesRes = user ? await supabase.from('user_challenges').select(`
-        *,
-        challenges (*)
-      `).eq('user_id', user.id) : { data: [], error: null };
+      // Always try to fetch challenges without joins first
+      let challenges = [];
+      try {
+        const challengesSimpleRes = await supabase.from('challenges').select('*').eq('is_active', true);
+        if (challengesSimpleRes.error) {
+          console.error('Failed to fetch challenges:', challengesSimpleRes.error);
+          setChallenges([]);
+        } else {
+          challenges = challengesSimpleRes.data || [];
+          
+          // Try to enrich with categories if we have them
+          if (categories.length > 0) {
+            try {
+              const enrichedChallenges = enrichChallengesWithCategories(challenges, categories);
+              setChallenges(enrichedChallenges);
+            } catch (error) {
+              console.warn('Failed to enrich challenges, using simple data:', error);
+              setChallenges(challenges);
+            }
+          } else {
+            setChallenges(challenges);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch challenges:', error);
+        setChallenges([]);
+      }
       
-      console.log('User challenges result:', userChallengesRes);
-      
-      if (userChallengesRes.error) {
-        console.error('User challenges error:', userChallengesRes.error);
-        setUserChallenges([]);
+      // Fetch user challenges
+      if (user) {
+        try {
+          const userChallengesRes = await supabase.from('user_challenges').select(`
+            *,
+            challenges (*)
+          `).eq('user_id', user.id);
+          
+          if (userChallengesRes.error) {
+            console.warn('Failed to fetch user challenges:', userChallengesRes.error);
+            setUserChallenges([]);
+          } else {
+            setUserChallenges(userChallengesRes.data || []);
+          }
+        } catch (error) {
+          console.warn('Failed to fetch user challenges:', error);
+          setUserChallenges([]);
+        }
       } else {
-        setUserChallenges(userChallengesRes.data || []);
+        setUserChallenges([]);
       }
+      
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Unexpected error in fetchData:', error);
       toast({
         title: "Error",
         description: "Failed to load challenges",
@@ -215,14 +222,37 @@ const Challenges = () => {
     if (!user) return;
 
     try {
-      const { error } = await supabase.from('user_challenges').insert([{
-        user_id: user.id,
-        challenge_id: challengeId,
-        status: 'in_progress',
-        started_at: new Date().toISOString()
-      }]);
+      // Check if user_challenge already exists
+      const { data: existingChallenges, error: checkError } = await supabase
+        .from('user_challenges')
+        .select('id, status')
+        .eq('user_id', user.id)
+        .eq('challenge_id', challengeId);
+      
+      const existingChallenge = existingChallenges?.[0];
 
-      if (error) throw error;
+      if (existingChallenge) {
+        // Update existing challenge status
+        const { error } = await supabase
+          .from('user_challenges')
+          .update({
+            status: 'in_progress',
+            started_at: new Date().toISOString()
+          })
+          .eq('id', existingChallenge.id);
+
+        if (error) throw error;
+      } else {
+        // Insert new challenge
+        const { error } = await supabase.from('user_challenges').insert([{
+          user_id: user.id,
+          challenge_id: challengeId,
+          status: 'in_progress',
+          started_at: new Date().toISOString()
+        }]);
+
+        if (error) throw error;
+      }
 
       fetchData();
       toast({

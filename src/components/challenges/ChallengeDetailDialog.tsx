@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -139,16 +139,28 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
     if (!user || !challenge) return;
     
     try {
+      // Check if submissions table exists by trying a simple query first
+      const { error: tableCheckError } = await supabase
+        .from('submissions')
+        .select('id')
+        .limit(1);
+      
+      if (tableCheckError) {
+        console.warn('Submissions table may not exist:', tableCheckError);
+        setPendingValidations([]);
+        return;
+      }
+      
       const { data, error } = await supabase
         .from('submissions')
         .select(`
           *,
-          profiles (
+          profiles!user_id (
             username,
             display_name,
             avatar_url
           ),
-          challenges (
+          challenges!challenge_id (
             title,
             description,
             points_reward
@@ -158,8 +170,12 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
         .eq('status', 'pending')
         .neq('user_id', user.id);
       
-      if (error) throw error;
-      setPendingValidations(data as Submission[] || []);
+      if (error) {
+        console.warn('Error fetching pending validations:', error);
+        setPendingValidations([]);
+      } else {
+        setPendingValidations(data as Submission[] || []);
+      }
     } catch (error) {
       console.error('Error fetching pending validations:', error);
       setPendingValidations([]);
@@ -194,14 +210,37 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
     if (!user) return;
 
     try {
-      const { error } = await supabase.from('user_challenges').insert([{
-        user_id: user.id,
-        challenge_id: challenge.id,
-        status: 'in_progress',
-        started_at: new Date().toISOString()
-      }]);
+      // Check if user_challenge already exists
+      const { data: existingChallenges, error: checkError } = await supabase
+        .from('user_challenges')
+        .select('id, status')
+        .eq('user_id', user.id)
+        .eq('challenge_id', challenge.id);
+      
+      const existingChallenge = existingChallenges?.[0];
 
-      if (error) throw error;
+      if (existingChallenge) {
+        // Update existing challenge status
+        const { error } = await supabase
+          .from('user_challenges')
+          .update({
+            status: 'in_progress',
+            started_at: new Date().toISOString()
+          })
+          .eq('id', existingChallenge.id);
+
+        if (error) throw error;
+      } else {
+        // Insert new challenge
+        const { error } = await supabase.from('user_challenges').insert([{
+          user_id: user.id,
+          challenge_id: challenge.id,
+          status: 'in_progress',
+          started_at: new Date().toISOString()
+        }]);
+
+        if (error) throw error;
+      }
 
       onStatusUpdate();
       toast({
@@ -364,6 +403,9 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
             </div>
             <div>
               <DialogTitle className="text-2xl">{challenge.title}</DialogTitle>
+              <DialogDescription className="mt-2">
+                {challenge.description}
+              </DialogDescription>
               <div className="flex items-center gap-2 mt-2">
                 <Badge variant={getCategoryVariant(challenge.challenge_categories?.name || '')}>
                   {challenge.challenge_categories?.name}

@@ -1,73 +1,157 @@
-# Welcome to your Lovable project
+# 🏆 Challengr
 
-## Project info
+A modern, gamified challenge platform that motivates users to push their limits, track progress, and achieve their goals through community-driven challenges.
 
-**URL**: https://lovable.dev/projects/696123dc-e23d-4cad-80ef-bdc7115342bb
+![Challengr Preview](https://img.shields.io/badge/Status-Active-brightgreen)
+![React](https://img.shields.io/badge/React-18+-61dafb)
+![TypeScript](https://img.shields.io/badge/TypeScript-5+-3178c6)
+![Supabase](https://img.shields.io/badge/Supabase-Backend-3ecf8e)
 
-## How can I edit this code?
+## ✨ Features
 
-There are several ways of editing your application.
+- **🎯 Challenge System**: Create and participate in various types of challenges
+- **🏅 Gamification**: Points, badges, and leaderboards to keep users engaged
+- **👥 Community**: Social features with discussions and peer validation
+- **📊 Progress Tracking**: Visual progress indicators and achievement tracking
+- **🎨 Multiple Categories**: Sports, Art, Music, Coding, Writing, Cooking, Gardening
+- **💎 Premium Features**: Advanced coaching content and exclusive challenges
+- **🔐 User Authentication**: Secure login with profile management
+- **📱 Responsive Design**: Optimized for desktop and mobile devices
 
-**Use Lovable**
+## 🚀 Quick Start
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/696123dc-e23d-4cad-80ef-bdc7115342bb) and start prompting.
+### Prerequisites
 
-Changes made via Lovable will be committed automatically to this repo.
+- Node.js 18+ and npm
+- Supabase account and project
 
-**Use your preferred IDE**
+### Installation
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+```bash
+# Clone the repository
+git clone https://github.com/lucasjolym6/challengr.git
+cd challengr
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+# Install dependencies
+npm install
 
-Follow these steps:
+# Set up environment variables
+cp .env.example .env.local
+# Edit .env.local with your Supabase credentials
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Open [http://localhost:5173](http://localhost:5173) to view the application.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 🛠️ Tech Stack
 
-**Use GitHub Codespaces**
+### Frontend
+- **React 18** - Modern UI library
+- **TypeScript** - Type-safe development
+- **Vite** - Fast build tool and dev server
+- **Tailwind CSS** - Utility-first CSS framework
+- **shadcn/ui** - Beautiful, accessible components
+- **Lucide React** - Icon library
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Backend
+- **Supabase** - Backend-as-a-Service
+- **PostgreSQL** - Database
+- **Row Level Security (RLS)** - Data security
+- **Supabase Auth** - Authentication system
+- **Supabase Storage** - File storage
 
-## What technologies are used for this project?
+### Development Tools
+- **ESLint** - Code linting
+- **Prettier** - Code formatting
+- **TypeScript** - Static type checking
 
-This project is built with:
+## 📁 Project Structure
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```
+src/
+├── components/          # Reusable UI components
+│   ├── auth/           # Authentication components
+│   ├── challenges/     # Challenge-related components
+│   ├── coaching/       # Coaching content components
+│   ├── layout/         # Layout components
+│   └── ui/             # shadcn/ui components
+├── hooks/              # Custom React hooks
+├── integrations/       # External service integrations
+│   └── supabase/       # Supabase client and types
+├── lib/                # Utility functions
+├── pages/              # Page components
+└── assets/             # Static assets
+```
 
-## How can I deploy this project?
+## 🗄️ Database Schema
 
-Simply open [Lovable](https://lovable.dev/projects/696123dc-e23d-4cad-80ef-bdc7115342bb) and click on Share -> Publish.
+### Key Tables
+- `challenges` - Challenge definitions
+- `challenge_categories` - Challenge categories
+- `user_challenges` - User progress tracking
+- `profiles` - User profiles
+- `posts` - Community posts and submissions
+- `coaching_content` - Premium coaching materials
 
-## Can I connect a custom domain to my Lovable project?
+## 🔧 Environment Variables
 
-Yes, you can!
+Create a `.env.local` file with the following variables:
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## 📦 Available Scripts
+
+```bash
+# Development
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run preview      # Preview production build
+
+# Code Quality
+npm run lint         # Run ESLint
+npm run type-check   # Run TypeScript compiler
+
+# Database
+npm run db:generate  # Generate TypeScript types from Supabase
+npm run db:push      # Push migrations to Supabase
+```
+
+## 🚀 Deployment
+
+### Vercel (Recommended)
+1. Connect your GitHub repository to Vercel
+2. Set environment variables in Vercel dashboard
+3. Deploy automatically on push to main
+
+### Other Platforms
+The application can be deployed to any platform that supports static sites:
+- Netlify
+- AWS S3 + CloudFront
+- GitHub Pages
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [shadcn/ui](https://ui.shadcn.com/) for the beautiful component library
+- [Supabase](https://supabase.com/) for the backend infrastructure
+- [Tailwind CSS](https://tailwindcss.com/) for the utility-first CSS framework
+
+---
+
+Built with ❤️ by the Challengr team
