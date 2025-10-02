@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { MessageCircle, Send, Share2, Search, Users as UsersIcon, ArrowLeft } from "lucide-react";
 import { SharedChallengeCard } from "@/components/messages/SharedChallengeCard";
+import { AddFriendDialog } from "@/components/messages/AddFriendDialog";
 import { format } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -122,87 +123,127 @@ export default function Messages() {
   const fetchFriends = async () => {
     if (!user) return;
 
-    // Fetch friends where current user is user_id
-    const { data: friendsAsUser } = await supabase
-      .from('user_friends')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('status', 'accepted');
+    console.log('Fetching friends for user:', user.id);
 
-    // Fetch friends where current user is friend_id
-    const { data: friendsAsFriend } = await supabase
-      .from('user_friends')
-      .select('*')
-      .eq('friend_id', user.id)
-      .eq('status', 'accepted');
+    try {
+      // Fetch friends where current user is user_id
+      const { data: friendsAsUser, error: error1 } = await supabase
+        .from('user_friends')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'accepted');
 
-    const allFriendships = [...(friendsAsUser || []), ...(friendsAsFriend || [])];
+      console.log('Friends as user result:', { friendsAsUser, error1 });
 
-    if (allFriendships.length > 0) {
-      // Extract friend IDs from both directions
-      const friendIds = allFriendships.map(f => 
-        f.user_id === user.id ? f.friend_id : f.user_id
-      );
+      // Fetch friends where current user is friend_id
+      const { data: friendsAsFriend, error: error2 } = await supabase
+        .from('user_friends')
+        .select('*')
+        .eq('friend_id', user.id)
+        .eq('status', 'accepted');
 
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('user_id, username, display_name, avatar_url')
-        .in('user_id', friendIds);
+      console.log('Friends as friend result:', { friendsAsFriend, error2 });
 
-      const friendsWithProfiles = allFriendships.map(friend => {
-        const friendUserId = friend.user_id === user.id ? friend.friend_id : friend.user_id;
-        const profile = profilesData?.find(p => p.user_id === friendUserId);
-        return {
-          ...friend,
-          profiles: profile || {
-            user_id: friendUserId,
-            username: 'Unknown',
-            display_name: 'Unknown User',
-            avatar_url: ''
-          }
-        };
-      });
+      const allFriendships = [...(friendsAsUser || []), ...(friendsAsFriend || [])];
+      console.log('All friendships:', allFriendships);
 
-      setFriends(friendsWithProfiles as Friend[]);
-    } else {
+      if (allFriendships.length > 0) {
+        // Extract friend IDs from both directions
+        const friendIds = allFriendships.map(f => 
+          f.user_id === user.id ? f.friend_id : f.user_id
+        );
+
+        console.log('Friend IDs to fetch profiles for:', friendIds);
+
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('user_id, username, display_name, avatar_url')
+          .in('user_id', friendIds);
+
+        console.log('Profiles data result:', { profilesData, profilesError });
+
+        const friendsWithProfiles = allFriendships.map(friend => {
+          const friendUserId = friend.user_id === user.id ? friend.friend_id : friend.user_id;
+          const profile = profilesData?.find(p => p.user_id === friendUserId);
+          return {
+            ...friend,
+            profiles: profile || {
+              user_id: friendUserId,
+              username: 'Unknown',
+              display_name: 'Unknown User',
+              avatar_url: ''
+            }
+          };
+        });
+
+        console.log('Friends with profiles:', friendsWithProfiles);
+        setFriends(friendsWithProfiles as Friend[]);
+      } else {
+        console.log('No friendships found, setting empty friends list');
+        setFriends([]);
+      }
+    } catch (error) {
+      console.error('Error fetching friends:', error);
       setFriends([]);
     }
   };
 
   const fetchMessages = async () => {
-    if (!user || !selectedFriend) return;
-
-    const friendId = selectedFriend.profiles.user_id;
-
-    const { data, error } = await supabase
-      .from('messages')
-      .select(`
-        *,
-        challenges (
-          id,
-          title,
-          description,
-          image_url,
-          challenge_categories (
-            name,
-            icon
-          )
-        )
-      `)
-      .or(`and(sender_id.eq.${user.id},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${user.id})`)
-      .order('created_at', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching messages:', error);
+    if (!user || !selectedFriend) {
+      console.log('Cannot fetch messages:', { user: !!user, selectedFriend: !!selectedFriend });
       return;
     }
 
-    setMessages(data || []);
+    const friendId = selectedFriend.profiles.user_id;
+    console.log('Fetching messages between:', { user_id: user.id, friend_id: friendId });
 
-    // Mark unread messages as read
-    const unreadIds = data?.filter(m => m.receiver_id === user.id && !m.read_at).map(m => m.id) || [];
-    if (unreadIds.length > 0) {
-      unreadIds.forEach(id => markAsRead(id));
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select(`
+          *,
+          challenges (
+            id,
+            title,
+            description,
+            image_url,
+            challenge_categories (
+              name,
+              icon
+            )
+          )
+        `)
+        .or(`and(sender_id.eq.${user.id},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${user.id})`)
+        .order('created_at', { ascending: true });
+
+      console.log('Messages fetch result:', { data, error });
+
+      if (error) {
+        console.error('Error fetching messages:', error);
+        toast({
+          title: "Error",
+          description: `Failed to load messages: ${error.message}`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      console.log('Setting messages:', data || []);
+      setMessages(data || []);
+
+      // Mark unread messages as read
+      const unreadIds = data?.filter(m => m.receiver_id === user.id && !m.read_at).map(m => m.id) || [];
+      console.log('Unread message IDs:', unreadIds);
+      if (unreadIds.length > 0) {
+        unreadIds.forEach(id => markAsRead(id));
+      }
+    } catch (error) {
+      console.error('Unexpected error fetching messages:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while loading messages",
+        variant: "destructive"
+      });
     }
   };
 
@@ -235,35 +276,65 @@ export default function Messages() {
   };
 
   const sendMessage = async (challengeId?: string) => {
-    if (!user || !selectedFriend || (!newMessage.trim() && !challengeId)) return;
-
-    const friendId = selectedFriend.profiles.user_id;
-
-    const { error } = await supabase
-      .from('messages')
-      .insert({
-        sender_id: user.id,
-        receiver_id: friendId,
-        content: challengeId ? null : newMessage.trim(),
-        challenge_id: challengeId || null
-      });
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to send message",
-        variant: "destructive"
-      });
+    if (!user || !selectedFriend || (!newMessage.trim() && !challengeId)) {
+      console.log('Cannot send message:', { user: !!user, selectedFriend: !!selectedFriend, newMessage: newMessage.trim(), challengeId });
       return;
     }
 
-    setNewMessage('');
-    fetchMessages();
+    const friendId = selectedFriend.profiles.user_id;
+    console.log('Sending message:', { sender_id: user.id, receiver_id: friendId, content: newMessage.trim(), challengeId });
 
-    if (challengeId) {
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          sender_id: user.id,
+          receiver_id: friendId,
+          content: challengeId ? null : newMessage.trim(),
+          challenge_id: challengeId || null
+        })
+        .select()
+        .single();
+
+      console.log('Message send result:', { data, error });
+
+      if (error) {
+        console.error('Error sending message:', error);
+        toast({
+          title: "Error",
+          description: `Failed to send message: ${error.message}`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setNewMessage('');
+      
+      // Add the new message to the current messages list immediately
+      if (data) {
+        setMessages(prev => [...prev, data]);
+      }
+      
+      // Also refetch to ensure we have the latest data
+      fetchMessages();
+
+      if (challengeId) {
+        toast({
+          title: "Challenge Shared!",
+          description: "Your friend can now start this challenge"
+        });
+      } else {
+        toast({
+          title: "Message Sent!",
+          description: "Your message has been delivered"
+        });
+      }
+    } catch (error) {
+      console.error('Unexpected error sending message:', error);
       toast({
-        title: "Challenge Shared!",
-        description: "Your friend can now start this challenge"
+        title: "Error",
+        description: "An unexpected error occurred while sending the message",
+        variant: "destructive"
       });
     }
   };
@@ -295,10 +366,13 @@ export default function Messages() {
       {showFriendsList && (
         <div className={`${isMobile ? 'w-full' : 'w-80 border-r'} flex flex-col bg-card`}>
           <div className="border-b px-4 py-4">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <MessageCircle className="h-5 w-5" />
-              Messages
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <MessageCircle className="h-5 w-5" />
+                Messages
+              </h2>
+              <AddFriendDialog onFriendAdded={fetchFriends} />
+            </div>
           </div>
           
           <ScrollArea className="flex-1">
