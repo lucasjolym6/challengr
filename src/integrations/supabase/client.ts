@@ -6,41 +6,43 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 // Check if environment variables are properly configured
-if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+const isConfigured = SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY;
+
+if (!isConfigured) {
   console.error('❌ Supabase environment variables are missing!');
   console.error('Please create a .env.local file with:');
   console.error('VITE_SUPABASE_URL=your_supabase_url');
   console.error('VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key');
   console.error('');
   console.error('Get these values from your Supabase Dashboard > Settings > API');
-  
-  // Create a mock client to prevent crashes
-  const mockClient = {
-    from: () => ({
-      select: () => ({ eq: () => ({ data: [], error: { message: 'Supabase not configured' } }) }),
-      insert: () => ({ data: null, error: { message: 'Supabase not configured' } }),
-      update: () => ({ eq: () => ({ data: null, error: { message: 'Supabase not configured' } }) }),
-      delete: () => ({ eq: () => ({ data: null, error: { message: 'Supabase not configured' } }) })
-    }),
-    auth: {
-      signIn: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
-      signUp: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
-      signOut: () => Promise.resolve({ error: null }),
-      getSession: () => Promise.resolve({ data: { session: null }, error: null }),
-      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } })
-    }
-  };
-  
-  export const supabase = mockClient as any;
-} else {
-  // Import the supabase client like this:
-  // import { supabase } from "@/integrations/supabase/client";
-
-  export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-    auth: {
-      storage: localStorage,
-      persistSession: true,
-      autoRefreshToken: true,
-    }
-  });
 }
+
+// Create a mock client to prevent crashes when not configured
+const mockClient = {
+  from: () => ({
+    select: () => ({ eq: () => ({ data: [], error: { message: 'Supabase not configured' } }) }),
+    insert: () => ({ data: null, error: { message: 'Supabase not configured' } }),
+    update: () => ({ eq: () => ({ data: null, error: { message: 'Supabase not configured' } }) }),
+    delete: () => ({ eq: () => ({ data: null, error: { message: 'Supabase not configured' } }) })
+  }),
+  auth: {
+    signIn: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+    signUp: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+    signOut: () => Promise.resolve({ error: null }),
+    getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } })
+  }
+};
+
+// Import the supabase client like this:
+// import { supabase } from "@/integrations/supabase/client";
+
+export const supabase = isConfigured 
+  ? createClient<Database>(SUPABASE_URL!, SUPABASE_PUBLISHABLE_KEY!, {
+      auth: {
+        storage: localStorage,
+        persistSession: true,
+        autoRefreshToken: true,
+      }
+    })
+  : mockClient as any;
