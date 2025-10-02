@@ -91,18 +91,22 @@ const ChallengeFeed: React.FC = () => {
     try {
       const interactions: ChallengeInteraction[] = [];
 
-      // Fetch challenges with optimized queries (limit to recent and active)
-      const { data: challengesData } = await supabase
+      // Fetch challenges without joins first to avoid relationship issues
+      const { data: challengesData, error: challengesError } = await supabase
         .from('challenges')
-        .select(`
-          id,
-          title,
-          image_url,
-          challenge_categories!category_id (name, color)
-        `)
+        .select('id, title, image_url, category_id')
         .eq('is_active', true)
         .order('created_at', { ascending: false })
-        .limit(30); // Limit for performance
+        .limit(30);
+
+      console.log('ChallengeFeed - challenges fetch result:', { challengesData, challengesError });
+
+      if (challengesError) {
+        console.error('Error fetching challenges in ChallengeFeed:', challengesError);
+        setInteractions([]);
+        setLoading(false);
+        return;
+      }
 
       if (!challengesData || challengesData.length === 0) {
         setInteractions([]);
@@ -110,7 +114,24 @@ const ChallengeFeed: React.FC = () => {
         return;
       }
 
-      const challengeIds = challengesData.map(c => c.id);
+      // Fetch categories separately to avoid join issues
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('challenge_categories')
+        .select('id, name, color');
+
+      console.log('ChallengeFeed - categories fetch result:', { categoriesData, categoriesError });
+
+      // Enrich challenges with category data
+      const enrichedChallenges = challengesData.map(challenge => ({
+        ...challenge,
+        challenge_categories: challenge.category_id && categoriesData
+          ? categoriesData.find(cat => cat.id === challenge.category_id)
+          : null
+      }));
+
+      console.log('ChallengeFeed - enriched challenges:', enrichedChallenges);
+
+      const challengeIds = enrichedChallenges.map(c => c.id);
 
       // Batch fetch all user challenges for these challenges
       const { data: allUserChallenges } = await supabase
@@ -127,12 +148,19 @@ const ChallengeFeed: React.FC = () => {
       const allUserChallengeIds = (allUserChallenges || []).map(uc => uc.id);
 
       // Batch fetch all posts
-      const { data: allPosts } = await supabase
+      const { data: allPosts, error: postsError } = await supabase
         .from('posts')
         .select('id, user_challenge_id, likes_count, comments_count, content, image_url, created_at, verified, user_id')
         .in('user_challenge_id', allUserChallengeIds)
         .order('created_at', { ascending: false })
         .limit(100);
+
+      console.log('ChallengeFeed - posts fetch result:', { allPosts, postsError });
+
+      if (postsError) {
+        console.error('Error fetching posts in ChallengeFeed:', postsError);
+        // Continue without posts rather than failing completely
+      }
 
       const postsByChallenge = (allPosts || []).reduce((acc, post) => {
         const uc = allUserChallenges?.find(u => u.id === post.user_challenge_id);

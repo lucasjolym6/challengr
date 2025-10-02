@@ -95,20 +95,39 @@ const ChallengeDiscussion: React.FC<ChallengeDiscussionProps> = ({
 
   const fetchChallenge = async () => {
     try {
-      const { data, error } = await supabase
+      console.log('ChallengeDiscussion - fetching challenge:', challengeId);
+      
+      // Fetch challenge without joins first
+      const { data: challengeData, error: challengeError } = await supabase
         .from('challenges')
-        .select(`
-          id,
-          title,
-          description,
-          image_url,
-          challenge_categories!category_id (name, color)
-        `)
+        .select('id, title, description, image_url, category_id')
         .eq('id', challengeId)
         .single();
 
-      if (error) throw error;
-      setChallenge(data);
+      console.log('ChallengeDiscussion - challenge fetch result:', { challengeData, challengeError });
+
+      if (challengeError) {
+        console.error('Error fetching challenge:', challengeError);
+        return;
+      }
+
+      if (challengeData) {
+        // Fetch category separately if needed
+        if (challengeData.category_id) {
+          const { data: categoryData } = await supabase
+            .from('challenge_categories')
+            .select('id, name, color')
+            .eq('id', challengeData.category_id)
+            .single();
+
+          setChallenge({
+            ...challengeData,
+            challenge_categories: categoryData
+          });
+        } else {
+          setChallenge(challengeData);
+        }
+      }
     } catch (error) {
       console.error('Error fetching challenge:', error);
     }
@@ -137,39 +156,33 @@ const ChallengeDiscussion: React.FC<ChallengeDiscussionProps> = ({
         return;
       }
 
-      // Get posts with user info
+      // Get posts without joins first
       const { data: posts, error: postsError } = await supabase
         .from('posts')
-        .select(`
-          id,
-          content,
-          image_url,
-          created_at,
-          likes_count,
-          comments_count,
-          verified,
-          user_id,
-          profiles!posts_user_id_fkey (username, avatar_url)
-        `)
+        .select('id, content, image_url, created_at, likes_count, comments_count, verified, user_id')
         .in('user_challenge_id', userChallengeIds)
         .order('created_at', { ascending: false });
 
-      if (postsError) throw postsError;
+      console.log('ChallengeDiscussion - posts fetch result:', { posts, postsError });
+
+      if (postsError) {
+        console.error('Error fetching posts in ChallengeDiscussion:', postsError);
+        // Continue without posts
+      }
 
       // Get comments with replies
       const postIds = posts?.map(p => p.id) || [];
-      const { data: comments } = await supabase
+      const { data: comments, error: commentsError } = await supabase
         .from('comments')
-        .select(`
-          id,
-          content,
-          created_at,
-          user_id,
-          post_id,
-          profiles!comments_user_id_fkey (username, avatar_url)
-        `)
+        .select('id, content, created_at, user_id, post_id')
         .in('post_id', postIds)
         .order('created_at', { ascending: true });
+
+      console.log('ChallengeDiscussion - comments fetch result:', { comments, commentsError });
+
+      if (commentsError) {
+        console.error('Error fetching comments in ChallengeDiscussion:', commentsError);
+      }
 
       // Get activity items (joins/completes)
       const { data: activities } = await supabase
@@ -661,6 +674,12 @@ const ChallengeDiscussion: React.FC<ChallengeDiscussionProps> = ({
                 placeholder="Écris un commentaire..."
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleComment();
+                  }
+                }}
                 onFocus={() => {
                   if (items.length > 0 && items[0].type === 'post') {
                     setReplyingTo({ id: items[0].id, username: items[0].user_name });
@@ -668,6 +687,14 @@ const ChallengeDiscussion: React.FC<ChallengeDiscussionProps> = ({
                 }}
                 className="flex-1 rounded-full h-10"
               />
+              <Button
+                size="sm"
+                onClick={handleComment}
+                disabled={!newComment.trim()}
+                className="rounded-full h-10 px-4 bg-primary hover:bg-primary/90"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
               <div className="flex items-center gap-1">
                 <span className="text-xl cursor-pointer hover:scale-110 transition-transform">🔥</span>
                 <span className="text-xl cursor-pointer hover:scale-110 transition-transform">😂</span>
