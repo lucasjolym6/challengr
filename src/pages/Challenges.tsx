@@ -1,21 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { Plus, Filter, Trophy, Target, TrendingUp } from "lucide-react";
+import { Plus, Trophy, TrendingUp } from "lucide-react";
 import ChallengeDetailDialog from "@/components/challenges/ChallengeDetailDialog";
 import { CreateChallengeDialog } from "@/components/challenges/CreateChallengeDialog";
+import ChallengeDiscussion from "@/components/challenges/ChallengeDiscussion";
+
+// Import category images
 
 // Import category images
 import sportsImg from "@/assets/category-sports.jpg";
@@ -268,9 +267,17 @@ const Challenges = () => {
   const companyChallenges = filteredChallenges.filter(c => c.type === 'company');
   const communityChallenges = filteredChallenges.filter(c => c.type === 'community');
 
+  const [showDiscussion, setShowDiscussion] = useState(false);
+  const [discussionChallengeId, setDiscussionChallengeId] = useState<string | null>(null);
+
   const openChallengeDetail = (challenge: Challenge) => {
     setSelectedChallenge(challenge);
     setShowDetailDialog(true);
+  };
+
+  const openDiscussion = (challengeId: string) => {
+    setDiscussionChallengeId(challengeId);
+    setShowDiscussion(true);
   };
 
   const renderChallengeCard = (challenge: Challenge) => {
@@ -528,14 +535,28 @@ const Challenges = () => {
         )}
       </div>
 
+      {/* Discussion Feed */}
+      {showDiscussion && discussionChallengeId && (
+        <ChallengeDiscussion
+          challengeId={discussionChallengeId}
+          onBack={() => {
+            setShowDiscussion(false);
+            setDiscussionChallengeId(null);
+          }}
+        />
+      )}
+
       {/* Challenge Detail Dialog */}
-      <ChallengeDetailDialog
-        challenge={selectedChallenge}
-        userChallenge={selectedChallenge ? getUserChallengeStatus(selectedChallenge.id) : null}
-        isOpen={showDetailDialog}
-        onClose={() => setShowDetailDialog(false)}
-        onStatusUpdate={fetchData}
-      />
+      {!showDiscussion && (
+        <ChallengeDetailDialog
+          challenge={selectedChallenge}
+          userChallenge={selectedChallenge ? getUserChallengeStatus(selectedChallenge.id) : null}
+          isOpen={showDetailDialog}
+          onClose={() => setShowDetailDialog(false)}
+          onStatusUpdate={fetchData}
+          onOpenDiscussion={openDiscussion}
+        />
+      )}
 
       <CreateChallengeDialog
         isOpen={showCreateDialog}

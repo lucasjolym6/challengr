@@ -56,6 +56,7 @@ interface ChallengeDetailDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onStatusUpdate: () => void;
+  onOpenDiscussion?: (challengeId: string) => void;
 }
 
 const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
@@ -63,7 +64,8 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
   userChallenge,
   isOpen,
   onClose,
-  onStatusUpdate
+  onStatusUpdate,
+  onOpenDiscussion
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -410,6 +412,20 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
               <p className="text-sm text-muted-foreground">Time</p>
             </div>
           </div>
+
+          {/* Discussion Button */}
+          {onOpenDiscussion && (
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => {
+                onClose();
+                onOpenDiscussion(challenge.id);
+              }}
+            >
+              💬 Voir le fil du défi
+            </Button>
+          )}
 
           {/* Challenge Rules */}
           <div>

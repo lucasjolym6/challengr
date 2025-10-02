@@ -91,93 +91,123 @@ const ChallengeFeed: React.FC = () => {
     try {
       const interactions: ChallengeInteraction[] = [];
 
-      // Fetch all active challenges
+      // Fetch challenges with optimized queries (limit to recent and active)
       const { data: challengesData } = await supabase
         .from('challenges')
         .select(`
-          *,
+          id,
+          title,
+          image_url,
           challenge_categories (name, color)
         `)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(30); // Limit for performance
 
-      for (const challenge of challengesData || []) {
-        // Get participants count
-        const { count: participantsCount } = await supabase
-          .from('user_challenges')
-          .select('*', { count: 'exact', head: true })
-          .eq('challenge_id', challenge.id);
+      if (!challengesData || challengesData.length === 0) {
+        setInteractions([]);
+        setLoading(false);
+        return;
+      }
 
-        // Get posts for likes/comments count
-        const userChallengeIds = await supabase
-          .from('user_challenges')
-          .select('id')
-          .eq('challenge_id', challenge.id)
-          .then(res => res.data?.map(uc => uc.id) || []);
+      const challengeIds = challengesData.map(c => c.id);
 
-        const { data: posts } = await supabase
-          .from('posts')
-          .select('likes_count, comments_count')
-          .in('user_challenge_id', userChallengeIds);
+      // Batch fetch all user challenges for these challenges
+      const { data: allUserChallenges } = await supabase
+        .from('user_challenges')
+        .select('id, challenge_id, user_id, status, created_at, completed_at')
+        .in('challenge_id', challengeIds);
 
-        const totalLikes = posts?.reduce((sum, p) => sum + (p.likes_count || 0), 0) || 0;
-        const totalComments = posts?.reduce((sum, p) => sum + (p.comments_count || 0), 0) || 0;
+      const userChallengesByChallenge = (allUserChallenges || []).reduce((acc, uc) => {
+        if (!acc[uc.challenge_id]) acc[uc.challenge_id] = [];
+        acc[uc.challenge_id].push(uc);
+        return acc;
+      }, {} as Record<string, any[]>);
 
-        // Get latest comment
-        const postIds = await supabase
-          .from('posts')
-          .select('id')
-          .in('user_challenge_id', userChallengeIds)
-          .then(res => res.data?.map(p => p.id) || []);
+      const allUserChallengeIds = (allUserChallenges || []).map(uc => uc.id);
 
-        const { data: latestComment } = await supabase
-          .from('comments')
-          .select(`
-            id,
-            content,
-            created_at,
-            profiles (username, avatar_url)
-          `)
-          .in('post_id', postIds)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+      // Batch fetch all posts
+      const { data: allPosts } = await supabase
+        .from('posts')
+        .select('id, user_challenge_id, likes_count, comments_count, content, image_url, created_at, verified, user_id')
+        .in('user_challenge_id', allUserChallengeIds)
+        .order('created_at', { ascending: false })
+        .limit(100);
 
-        // Get recent participant
-        const { data: recentParticipant } = await supabase
-          .from('user_challenges')
-          .select(`
-            id,
-            created_at,
-            status,
-            profiles (username, avatar_url)
-          `)
-          .eq('challenge_id', challenge.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+      const postsByChallenge = (allPosts || []).reduce((acc, post) => {
+        const uc = allUserChallenges?.find(u => u.id === post.user_challenge_id);
+        if (uc) {
+          if (!acc[uc.challenge_id]) acc[uc.challenge_id] = [];
+          acc[uc.challenge_id].push(post);
+        }
+        return acc;
+      }, {} as Record<string, any[]>);
 
-        // Check for activity spike
+      // Batch fetch all comments
+      const postIds = (allPosts || []).map(p => p.id);
+      const { data: allComments } = await supabase
+        .from('comments')
+        .select(`
+          id,
+          post_id,
+          content,
+          created_at,
+          user_id,
+          profiles!comments_user_id_fkey (username, avatar_url)
+        `)
+        .in('post_id', postIds)
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      const commentsByPost = (allComments || []).reduce((acc, comment) => {
+        if (!acc[comment.post_id]) acc[comment.post_id] = [];
+        acc[comment.post_id].push(comment);
+        return acc;
+      }, {} as Record<string, any[]>);
+
+      // Batch fetch user profiles
+      const allUserIds = [...new Set([
+        ...(allUserChallenges || []).map(uc => uc.user_id),
+        ...(allPosts || []).map(p => p.user_id),
+      ])];
+
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, username, avatar_url')
+        .in('user_id', allUserIds);
+
+      const profilesMap = (profiles || []).reduce((acc, p) => {
+        acc[p.user_id] = p;
+        return acc;
+      }, {} as Record<string, any>);
+
+      // Process each challenge to create interactions
+      for (const challenge of challengesData) {
+        const userChallenges = userChallengesByChallenge[challenge.id] || [];
+        const posts = postsByChallenge[challenge.id] || [];
+
+        const participantsCount = userChallenges.length;
+        const totalLikes = posts.reduce((sum, p) => sum + (p.likes_count || 0), 0);
+        const totalComments = posts.reduce((sum, p) => sum + (p.comments_count || 0), 0);
+
+        // Check for recent activity spike (last 24h)
         const oneDayAgo = new Date();
         oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-        
-        const { count: recentParticipants } = await supabase
-          .from('user_challenges')
-          .select('*', { count: 'exact', head: true })
-          .eq('challenge_id', challenge.id)
-          .gte('created_at', oneDayAgo.toISOString());
+        const recentParticipants = userChallenges.filter(
+          uc => new Date(uc.created_at) > oneDayAgo
+        ).length;
 
-        // Create interaction cards
-        if (recentParticipants && recentParticipants > 10) {
-          // Milestone interaction
+        // Priority 1: Activity spike (milestone)
+        if (recentParticipants >= 10) {
           interactions.push({
-            id: `milestone-${challenge.id}`,
+            id: `milestone-${challenge.id}-${Date.now()}`,
             challenge_id: challenge.id,
             challenge_title: challenge.title,
             challenge_image: challenge.image_url,
             category_name: challenge.challenge_categories?.name || 'Challenge',
             category_color: challenge.challenge_categories?.color,
             interaction_type: 'milestone',
-            participants_count: participantsCount || 0,
+            participants_count: participantsCount,
             likes_count: totalLikes,
             comments_count: totalComments,
             milestone: {
@@ -185,46 +215,66 @@ const ChallengeFeed: React.FC = () => {
               count: recentParticipants,
             },
           });
-        } else if (latestComment) {
-          // Comment interaction
-          const profile = latestComment.profiles as any;
+          continue;
+        }
+
+        // Priority 2: Recent comment
+        const latestPost = posts[0];
+        if (latestPost) {
+          const postComments = commentsByPost[latestPost.id] || [];
+          const latestComment = postComments[0];
+
+          if (latestComment) {
+            const profile = (latestComment.profiles as any) || profilesMap[latestComment.user_id];
+            interactions.push({
+              id: latestComment.id,
+              challenge_id: challenge.id,
+              challenge_title: challenge.title,
+              challenge_image: challenge.image_url,
+              category_name: challenge.challenge_categories?.name || 'Challenge',
+              category_color: challenge.challenge_categories?.color,
+              interaction_type: 'comment',
+              participants_count: participantsCount,
+              likes_count: totalLikes,
+              comments_count: totalComments,
+              comment: {
+                content: latestComment.content,
+                user_name: profile?.username || 'Unknown',
+                user_avatar: profile?.avatar_url || null,
+                created_at: latestComment.created_at,
+              },
+            });
+            continue;
+          }
+        }
+
+        // Priority 3: Recent participant (join/complete)
+        const sortedUC = [...userChallenges].sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        const recentParticipant = sortedUC[0];
+
+        if (recentParticipant) {
+          const profile = profilesMap[recentParticipant.user_id];
+          const isComplete = recentParticipant.status === 'completed';
           interactions.push({
-            id: latestComment.id,
+            id: `${isComplete ? 'complete' : 'join'}-${recentParticipant.id}`,
             challenge_id: challenge.id,
             challenge_title: challenge.title,
             challenge_image: challenge.image_url,
             category_name: challenge.challenge_categories?.name || 'Challenge',
             category_color: challenge.challenge_categories?.color,
-            interaction_type: 'comment',
-            participants_count: participantsCount || 0,
-            likes_count: totalLikes,
-            comments_count: totalComments,
-            comment: {
-              content: latestComment.content,
-              user_name: profile?.username || 'Unknown',
-              user_avatar: profile?.avatar_url || null,
-              created_at: latestComment.created_at,
-            },
-          });
-        } else if (recentParticipant) {
-          // Join/Complete interaction
-          const profile = recentParticipant.profiles as any;
-          interactions.push({
-            id: `participant-${recentParticipant.id}`,
-            challenge_id: challenge.id,
-            challenge_title: challenge.title,
-            challenge_image: challenge.image_url,
-            category_name: challenge.challenge_categories?.name || 'Challenge',
-            category_color: challenge.challenge_categories?.color,
-            interaction_type: recentParticipant.status === 'completed' ? 'complete' : 'join',
-            participants_count: participantsCount || 0,
+            interaction_type: isComplete ? 'complete' : 'join',
+            participants_count: participantsCount,
             likes_count: totalLikes,
             comments_count: totalComments,
             participant: {
               user_name: profile?.username || 'Someone',
               user_avatar: profile?.avatar_url || null,
-              action: recentParticipant.status === 'completed' ? 'completed' : 'joined',
-              created_at: recentParticipant.created_at,
+              action: isComplete ? 'completed' : 'joined',
+              created_at: isComplete && recentParticipant.completed_at 
+                ? recentParticipant.completed_at 
+                : recentParticipant.created_at,
             },
           });
         }
