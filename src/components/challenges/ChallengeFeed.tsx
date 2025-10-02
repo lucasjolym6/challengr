@@ -1,61 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { Heart, MessageCircle, Users, ChevronLeft, ChevronRight, Flame, ArrowRight, TrendingUp, Sparkles, Clock } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ChevronLeft, ChevronRight, Flame, Clock } from "lucide-react";
 import { useSpring, animated, config } from '@react-spring/web';
 import { useDrag } from '@use-gesture/react';
-import { useNavigate } from 'react-router-dom';
-
-interface ChallengeVibe {
-  id: string;
-  title: string;
-  description: string | null;
-  image_url: string | null;
-  type: string;
-  difficulty_level: number;
-  category_id: string | null;
-  challenge_categories?: {
-    name: string;
-    color: string | null;
-  } | null;
-  participants_count: number;
-  total_likes: number;
-  total_comments: number;
-  latest_comment?: {
-    content: string;
-    username: string;
-    created_at: string;
-  } | null;
-  recent_participant?: {
-    username: string;
-    avatar_url: string | null;
-    action: string;
-    created_at: string;
-  } | null;
-  activity_spike?: {
-    count: number;
-    type: string;
-  } | null;
-  engagement_score?: number;
-  is_trending?: boolean;
-}
+import { Button } from "@/components/ui/button";
+import InteractionCard, { ChallengeInteraction } from './InteractionCard';
+import ChallengeDiscussion from './ChallengeDiscussion';
 
 const ChallengeFeed: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
-  const [challenges, setChallenges] = useState<ChallengeVibe[]>([]);
+  const [interactions, setInteractions] = useState<ChallengeInteraction[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [viewMode, setViewMode] = useState<'latest' | 'trending'>('latest');
-  const [seenChallenges, setSeenChallenges] = useState<Set<string>>(new Set());
+  const [seenInteractions, setSeenInteractions] = useState<Set<string>>(new Set());
   const [showSwipeHint, setShowSwipeHint] = useState(false);
+  const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(null);
+  const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const [{ x, rotate, scale }, api] = useSpring(() => ({
@@ -72,19 +36,19 @@ const ChallengeFeed: React.FC = () => {
   }));
 
   useEffect(() => {
-    fetchChallenges();
-    loadSeenChallenges();
+    fetchInteractions();
+    loadSeenInteractions();
     checkSwipeHint();
   }, []);
 
   useEffect(() => {
-    if (challenges.length > 0 && currentIndex < challenges.length) {
-      const currentChallenge = getSortedChallenges()[currentIndex];
-      if (currentChallenge && !seenChallenges.has(currentChallenge.id)) {
-        markAsSeen(currentChallenge.id);
+    if (interactions.length > 0 && currentIndex < interactions.length) {
+      const currentInteraction = getSortedInteractions()[currentIndex];
+      if (currentInteraction && !seenInteractions.has(currentInteraction.id)) {
+        markAsSeen(currentInteraction.id);
       }
     }
-  }, [currentIndex, challenges]);
+  }, [currentIndex, interactions]);
 
   const checkSwipeHint = () => {
     const hintShown = localStorage.getItem('vibe_swipe_hint_shown');
@@ -109,141 +73,169 @@ const ChallengeFeed: React.FC = () => {
     });
   };
 
-  const loadSeenChallenges = () => {
-    const seen = localStorage.getItem('seenChallenges');
+  const loadSeenInteractions = () => {
+    const seen = localStorage.getItem('seenInteractions');
     if (seen) {
-      setSeenChallenges(new Set(JSON.parse(seen)));
+      setSeenInteractions(new Set(JSON.parse(seen)));
     }
   };
 
-  const markAsSeen = (challengeId: string) => {
-    const newSeen = new Set(seenChallenges);
-    newSeen.add(challengeId);
-    setSeenChallenges(newSeen);
-    localStorage.setItem('seenChallenges', JSON.stringify(Array.from(newSeen)));
+  const markAsSeen = (interactionId: string) => {
+    const newSeen = new Set(seenInteractions);
+    newSeen.add(interactionId);
+    setSeenInteractions(newSeen);
+    localStorage.setItem('seenInteractions', JSON.stringify(Array.from(newSeen)));
   };
 
-  const fetchChallenges = async () => {
+  const fetchInteractions = async () => {
     try {
+      const interactions: ChallengeInteraction[] = [];
+
       // Fetch all active challenges
-      const { data: challengesData, error: challengesError } = await supabase
+      const { data: challengesData } = await supabase
         .from('challenges')
         .select(`
           *,
           challenge_categories (name, color)
         `)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+        .eq('is_active', true);
 
-      if (challengesError) throw challengesError;
+      for (const challenge of challengesData || []) {
+        // Get participants count
+        const { count: participantsCount } = await supabase
+          .from('user_challenges')
+          .select('*', { count: 'exact', head: true })
+          .eq('challenge_id', challenge.id);
 
-      // For each challenge, aggregate social data
-      const challengesWithVibes = await Promise.all(
-        (challengesData || []).map(async (challenge) => {
-          // Get participants count
-          const { count: participantsCount } = await supabase
-            .from('user_challenges')
-            .select('*', { count: 'exact', head: true })
-            .eq('challenge_id', challenge.id);
+        // Get posts for likes/comments count
+        const userChallengeIds = await supabase
+          .from('user_challenges')
+          .select('id')
+          .eq('challenge_id', challenge.id)
+          .then(res => res.data?.map(uc => uc.id) || []);
 
-          // Get posts for this challenge
-          const { data: posts } = await supabase
-            .from('posts')
-            .select('likes_count, comments_count')
-            .in('user_challenge_id', 
-              await supabase
-                .from('user_challenges')
-                .select('id')
-                .eq('challenge_id', challenge.id)
-                .then(res => res.data?.map(uc => uc.id) || [])
-            );
+        const { data: posts } = await supabase
+          .from('posts')
+          .select('likes_count, comments_count')
+          .in('user_challenge_id', userChallengeIds);
 
-          const totalLikes = posts?.reduce((sum, p) => sum + (p.likes_count || 0), 0) || 0;
-          const totalComments = posts?.reduce((sum, p) => sum + (p.comments_count || 0), 0) || 0;
+        const totalLikes = posts?.reduce((sum, p) => sum + (p.likes_count || 0), 0) || 0;
+        const totalComments = posts?.reduce((sum, p) => sum + (p.comments_count || 0), 0) || 0;
 
-          // Get latest comment
-          const { data: latestCommentData } = await supabase
-            .from('comments')
-            .select(`
-              content,
-              created_at,
-              profiles (username)
-            `)
-            .in('post_id', 
-              await supabase
-                .from('posts')
-                .select('id')
-                .in('user_challenge_id',
-                  await supabase
-                    .from('user_challenges')
-                    .select('id')
-                    .eq('challenge_id', challenge.id)
-                    .then(res => res.data?.map(uc => uc.id) || [])
-                )
-                .then(res => res.data?.map(p => p.id) || [])
-            )
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
+        // Get latest comment
+        const postIds = await supabase
+          .from('posts')
+          .select('id')
+          .in('user_challenge_id', userChallengeIds)
+          .then(res => res.data?.map(p => p.id) || []);
 
-          // Get recent participant
-          const { data: recentParticipant } = await supabase
-            .from('user_challenges')
-            .select(`
-              created_at,
-              status,
-              profiles (username, avatar_url)
-            `)
-            .eq('challenge_id', challenge.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
+        const { data: latestComment } = await supabase
+          .from('comments')
+          .select(`
+            id,
+            content,
+            created_at,
+            profiles (username, avatar_url)
+          `)
+          .in('post_id', postIds)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-          // Calculate engagement score
-          const engagement_score = (participantsCount || 0) * 5 + totalLikes * 2 + totalComments * 3;
+        // Get recent participant
+        const { data: recentParticipant } = await supabase
+          .from('user_challenges')
+          .select(`
+            id,
+            created_at,
+            status,
+            profiles (username, avatar_url)
+          `)
+          .eq('challenge_id', challenge.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-          // Check for activity spike (participants in last 24h)
-          const oneDayAgo = new Date();
-          oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-          
-          const { count: recentParticipants } = await supabase
-            .from('user_challenges')
-            .select('*', { count: 'exact', head: true })
-            .eq('challenge_id', challenge.id)
-            .gte('created_at', oneDayAgo.toISOString());
+        // Check for activity spike
+        const oneDayAgo = new Date();
+        oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+        
+        const { count: recentParticipants } = await supabase
+          .from('user_challenges')
+          .select('*', { count: 'exact', head: true })
+          .eq('challenge_id', challenge.id)
+          .gte('created_at', oneDayAgo.toISOString());
 
-          return {
-            ...challenge,
+        // Create interaction cards
+        if (recentParticipants && recentParticipants > 10) {
+          // Milestone interaction
+          interactions.push({
+            id: `milestone-${challenge.id}`,
+            challenge_id: challenge.id,
+            challenge_title: challenge.title,
+            challenge_image: challenge.image_url,
+            category_name: challenge.challenge_categories?.name || 'Challenge',
+            category_color: challenge.challenge_categories?.color,
+            interaction_type: 'milestone',
             participants_count: participantsCount || 0,
-            total_likes: totalLikes,
-            total_comments: totalComments,
-            latest_comment: latestCommentData ? {
-              content: latestCommentData.content,
-              username: (latestCommentData.profiles as any)?.username || 'Unknown',
-              created_at: latestCommentData.created_at,
-            } : null,
-            recent_participant: recentParticipant ? {
-              username: (recentParticipant.profiles as any)?.username || 'Someone',
-              avatar_url: (recentParticipant.profiles as any)?.avatar_url || null,
+            likes_count: totalLikes,
+            comments_count: totalComments,
+            milestone: {
+              message: `${recentParticipants} nouveaux aujourd'hui!`,
+              count: recentParticipants,
+            },
+          });
+        } else if (latestComment) {
+          // Comment interaction
+          const profile = latestComment.profiles as any;
+          interactions.push({
+            id: latestComment.id,
+            challenge_id: challenge.id,
+            challenge_title: challenge.title,
+            challenge_image: challenge.image_url,
+            category_name: challenge.challenge_categories?.name || 'Challenge',
+            category_color: challenge.challenge_categories?.color,
+            interaction_type: 'comment',
+            participants_count: participantsCount || 0,
+            likes_count: totalLikes,
+            comments_count: totalComments,
+            comment: {
+              content: latestComment.content,
+              user_name: profile?.username || 'Unknown',
+              user_avatar: profile?.avatar_url || null,
+              created_at: latestComment.created_at,
+            },
+          });
+        } else if (recentParticipant) {
+          // Join/Complete interaction
+          const profile = recentParticipant.profiles as any;
+          interactions.push({
+            id: `participant-${recentParticipant.id}`,
+            challenge_id: challenge.id,
+            challenge_title: challenge.title,
+            challenge_image: challenge.image_url,
+            category_name: challenge.challenge_categories?.name || 'Challenge',
+            category_color: challenge.challenge_categories?.color,
+            interaction_type: recentParticipant.status === 'completed' ? 'complete' : 'join',
+            participants_count: participantsCount || 0,
+            likes_count: totalLikes,
+            comments_count: totalComments,
+            participant: {
+              user_name: profile?.username || 'Someone',
+              user_avatar: profile?.avatar_url || null,
               action: recentParticipant.status === 'completed' ? 'completed' : 'joined',
               created_at: recentParticipant.created_at,
-            } : null,
-            activity_spike: (recentParticipants || 0) > 5 ? {
-              count: recentParticipants || 0,
-              type: 'participants'
-            } : null,
-            engagement_score,
-            is_trending: engagement_score > 50,
-          } as ChallengeVibe;
-        })
-      );
+            },
+          });
+        }
+      }
 
-      setChallenges(challengesWithVibes);
+      setInteractions(interactions);
     } catch (error) {
-      console.error('Error fetching challenges:', error);
+      console.error('Error fetching interactions:', error);
       toast({
-        title: "Error",
-        description: "Failed to load challenge vibes",
+        title: "Erreur",
+        description: "Impossible de charger les interactions",
         variant: "destructive",
       });
     } finally {
@@ -252,7 +244,7 @@ const ChallengeFeed: React.FC = () => {
   };
 
   const nextCard = () => {
-    if (currentIndex < getSortedChallenges().length - 1) {
+    if (currentIndex < getSortedInteractions().length - 1) {
       api.start({ 
         x: -400, 
         rotate: -15, 
@@ -303,7 +295,7 @@ const ChallengeFeed: React.FC = () => {
     if (!down && trigger) {
       if (xDir > 0 && currentIndex > 0) {
         prevCard();
-      } else if (xDir < 0 && currentIndex < getSortedChallenges().length - 1) {
+      } else if (xDir < 0 && currentIndex < getSortedInteractions().length - 1) {
         nextCard();
       } else {
         api.start({ x: 0, rotate: 0, scale: 1 });
@@ -331,27 +323,44 @@ const ChallengeFeed: React.FC = () => {
     return `${Math.floor(diffInHours / 24)}d ago`;
   };
 
-  const getSortedChallenges = () => {
-    let sorted = [...challenges];
+  const getSortedInteractions = () => {
+    let sorted = [...interactions];
     
     if (viewMode === 'trending') {
-      sorted.sort((a, b) => (b.engagement_score || 0) - (a.engagement_score || 0));
+      sorted.sort((a, b) => {
+        const scoreA = a.participants_count * 5 + a.likes_count * 2 + a.comments_count * 3;
+        const scoreB = b.participants_count * 5 + b.likes_count * 2 + b.comments_count * 3;
+        return scoreB - scoreA;
+      });
     }
     
     // Prioritize unseen
     sorted.sort((a, b) => {
-      const aSeen = seenChallenges.has(a.id) ? 1 : 0;
-      const bSeen = seenChallenges.has(b.id) ? 1 : 0;
+      const aSeen = seenInteractions.has(a.id) ? 1 : 0;
+      const bSeen = seenInteractions.has(b.id) ? 1 : 0;
       return aSeen - bSeen;
     });
     
     return sorted;
   };
 
-  const handleViewChallenge = (challengeId: string) => {
-    navigate(`/challenges`);
-    // Could add challenge ID to URL to auto-open the challenge
+  const handleViewInteraction = (interaction: ChallengeInteraction) => {
+    setSelectedChallengeId(interaction.challenge_id);
+    setHighlightedItemId(interaction.id);
   };
+
+  if (selectedChallengeId) {
+    return (
+      <ChallengeDiscussion
+        challengeId={selectedChallengeId}
+        highlightedItemId={highlightedItemId || undefined}
+        onBack={() => {
+          setSelectedChallengeId(null);
+          setHighlightedItemId(null);
+        }}
+      />
+    );
+  }
 
   if (loading) {
     return (
@@ -361,16 +370,16 @@ const ChallengeFeed: React.FC = () => {
     );
   }
 
-  const sortedChallenges = getSortedChallenges();
-  const currentChallenge = sortedChallenges[currentIndex];
+  const sortedInteractions = getSortedInteractions();
+  const currentInteraction = sortedInteractions[currentIndex];
 
-  if (sortedChallenges.length === 0) {
+  if (sortedInteractions.length === 0) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center px-6">
         <div className="text-6xl mb-6">🎯</div>
-        <h3 className="text-2xl font-bold mb-3">No challenges yet</h3>
+        <h3 className="text-2xl font-bold mb-3">Aucune interaction</h3>
         <p className="text-muted-foreground max-w-sm">
-          Check back soon for exciting challenges to join!
+          Revenez bientôt pour découvrir les défis en cours !
         </p>
       </div>
     );
@@ -442,140 +451,11 @@ const ChallengeFeed: React.FC = () => {
             touchAction: 'none',
           }}
           className="w-[85vw] max-w-lg h-[65vh] cursor-grab active:cursor-grabbing"
-          onClick={() => handleViewChallenge(currentChallenge.id)}
         >
-          <Card className="w-full h-full rounded-3xl overflow-hidden shadow-2xl border-0 relative flex flex-col">
-            {/* Full-bleed Background Image with Overlay */}
-            <div className="absolute inset-0 z-0">
-              {currentChallenge.image_url ? (
-                <img 
-                  src={currentChallenge.image_url} 
-                  alt={currentChallenge.title}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-orange-400 via-pink-400 to-purple-400" />
-              )}
-              {/* Stronger dark overlay for better readability */}
-              <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/60 to-black/75" />
-            </div>
-
-            {/* Content */}
-            <div className="relative z-10 flex flex-col h-full p-6">
-              {/* Header */}
-              <div className="flex-shrink-0 space-y-3">
-                {/* Trending Badge */}
-                {currentChallenge.is_trending && (
-                  <Badge className="bg-gradient-to-r from-orange-500 to-pink-500 text-white border-0 shadow-lg gap-1.5 px-3 py-1.5">
-                    <Flame className="w-4 h-4" />
-                    Trending
-                  </Badge>
-                )}
-
-                {/* Category */}
-                {currentChallenge.challenge_categories && (
-                  <Badge 
-                    variant="secondary" 
-                    className="bg-white/25 text-white backdrop-blur-md border-white/40"
-                  >
-                    {currentChallenge.challenge_categories.name}
-                  </Badge>
-                )}
-
-                {/* Challenge Title - Big & Bold */}
-                <h2 className="text-3xl font-black text-white drop-shadow-2xl leading-tight">
-                  {currentChallenge.title}
-                </h2>
-
-                {/* Quick Stats - Compact with emojis */}
-                <div className="flex items-center gap-4 text-white/95">
-                  <div className="flex items-center gap-1.5">
-                    <Users className="w-4 h-4" />
-                    <span className="text-sm font-bold">{currentChallenge.participants_count}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Heart className="w-4 h-4" />
-                    <span className="text-sm font-bold">{currentChallenge.total_likes}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <MessageCircle className="w-4 h-4" />
-                    <span className="text-sm font-bold">{currentChallenge.total_comments}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Center Highlight - Social Echo in rounded box */}
-              <div className="flex-1 flex items-center justify-center py-6">
-                <div className="bg-white/20 backdrop-blur-xl border-2 border-white/40 rounded-3xl p-6 shadow-2xl max-w-full">
-                  {/* Activity Spike */}
-                  {currentChallenge.activity_spike && (
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center shadow-lg">
-                        <TrendingUp className="w-6 h-6 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-white font-black text-xl">
-                          🔥 {currentChallenge.activity_spike.count} nouveaux aujourd'hui!
-                        </p>
-                        <p className="text-white/90 text-sm mt-1">Ce défi explose 🎉</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Recent Participant */}
-                  {currentChallenge.recent_participant && !currentChallenge.activity_spike && (
-                    <div className="flex items-start gap-3">
-                      <Avatar className="w-12 h-12 border-3 border-white/70 shadow-lg">
-                        <AvatarImage src={currentChallenge.recent_participant.avatar_url || undefined} />
-                        <AvatarFallback className="bg-gradient-to-br from-purple-400 to-pink-400 text-white font-bold text-lg">
-                          {currentChallenge.recent_participant.username.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <p className="text-white font-bold text-lg break-words">
-                          <span className="text-orange-300">{currentChallenge.recent_participant.username}</span>
-                          {' '}{currentChallenge.recent_participant.action === 'completed' ? 'a complété ⭐' : 'a rejoint 🎉'}
-                        </p>
-                        <p className="text-white/80 text-xs mt-1">{formatTimeAgo(currentChallenge.recent_participant.created_at)}</p>
-                      </div>
-                      <Sparkles className="w-6 h-6 text-yellow-300 flex-shrink-0" />
-                    </div>
-                  )}
-
-                  {/* Latest Comment */}
-                  {currentChallenge.latest_comment && !currentChallenge.recent_participant && !currentChallenge.activity_spike && (
-                    <div className="relative">
-                      <div className="absolute -left-4 top-4 w-0 h-0 border-t-[10px] border-r-[12px] border-b-[10px] border-transparent border-r-white/25" />
-                      <div className="bg-white/15 rounded-2xl p-4 backdrop-blur-sm">
-                        <p className="text-white font-medium text-base italic line-clamp-3 break-words">
-                          💬 "{currentChallenge.latest_comment.content}"
-                        </p>
-                        <p className="text-white/70 text-sm mt-2 font-semibold">
-                          — {currentChallenge.latest_comment.username}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Footer CTA - Small Secondary Button */}
-              <div className="flex-shrink-0 flex justify-end">
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleViewChallenge(currentChallenge.id);
-                  }}
-                  variant="secondary"
-                  size="sm"
-                  className="bg-white/30 hover:bg-white/40 text-white border border-white/50 backdrop-blur-md font-semibold rounded-full gap-2 px-4 py-2 shadow-lg"
-                >
-                  Voir le fil
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </Card>
+          <InteractionCard
+            interaction={currentInteraction}
+            onClick={() => handleViewInteraction(currentInteraction)}
+          />
         </animated.div>
       </div>
 
@@ -589,7 +469,7 @@ const ChallengeFeed: React.FC = () => {
       </button>
       <button
         onClick={nextCard}
-        disabled={currentIndex === sortedChallenges.length - 1}
+        disabled={currentIndex === sortedInteractions.length - 1}
         className="fixed right-2 md:right-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 flex items-center justify-center rounded-full bg-white/70 hover:bg-white/90 backdrop-blur-sm shadow-md transition-all disabled:opacity-20 disabled:pointer-events-none"
       >
         <ChevronRight className="w-5 h-5 text-gray-800" strokeWidth={2.5} />
