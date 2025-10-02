@@ -12,6 +12,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { MessageCircle, Send, Share2, Search, Users as UsersIcon, ArrowLeft } from "lucide-react";
 import { SharedChallengeCard } from "@/components/messages/SharedChallengeCard";
 import { AddFriendDialog } from "@/components/messages/AddFriendDialog";
+import { useRealtimeMessages } from "@/hooks/useRealtimeMessages";
 import { format } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -69,6 +70,7 @@ export default function Messages() {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showChat, setShowChat] = useState(false);
+  const [realtimeStatus, setRealtimeStatus] = useState<string>('DISCONNECTED');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -78,50 +80,39 @@ export default function Messages() {
     }
   }, [user]);
 
+  // Setup realtime messaging
+  const { reconnect } = useRealtimeMessages({
+    selectedFriendId: selectedFriend?.profiles.user_id || null,
+    onNewMessage: (message: Message) => {
+      console.log('New realtime message:', message);
+      setMessages(prev => {
+        // Check if message already exists to avoid duplicates
+        const exists = prev.some(m => m.id === message.id);
+        if (exists) {
+          console.log('Message already exists, skipping duplicate');
+          return prev;
+        }
+        
+        const updated = [...prev, message];
+        console.log('Updated messages list:', updated);
+        return updated;
+      });
+      scrollToBottom();
+      
+      // Mark as read if we're the receiver
+      if (message.receiver_id === user?.id) {
+        markAsRead(message.id);
+      }
+    },
+    onConnectionStatusChange: (status: string) => {
+      setRealtimeStatus(status);
+      console.log('Realtime status changed:', status);
+    }
+  });
+
   useEffect(() => {
     if (selectedFriend && user) {
       fetchMessages();
-      
-      // Set up realtime subscription for new messages (simplified)
-      console.log('Setting up realtime subscription for user:', user.id);
-      
-      const channel = supabase
-        .channel(`messages_${user.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'messages',
-            filter: `receiver_id=eq.${user.id}`
-          },
-          (payload) => {
-            console.log('Realtime message received:', payload);
-            const newMsg = payload.new as Message;
-            const friendId = selectedFriend.profiles.user_id;
-            
-            if (newMsg.sender_id === friendId) {
-              console.log('Adding new message to chat:', newMsg);
-              setMessages(prev => [...prev, newMsg]);
-              scrollToBottom();
-              markAsRead(newMsg.id);
-            }
-          }
-        )
-        .subscribe((status) => {
-          console.log('Realtime subscription status:', status);
-          if (status === 'SUBSCRIBED') {
-            console.log('✅ Realtime subscription successful');
-          } else if (status === 'CHANNEL_ERROR') {
-            console.error('❌ Realtime subscription failed - WebSocket connection error');
-          } else if (status === 'TIMED_OUT') {
-            console.warn('⏰ Realtime subscription timed out');
-          }
-        });
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
     }
   }, [selectedFriend, user]);
 
@@ -358,13 +349,9 @@ export default function Messages() {
 
       setNewMessage('');
       
-      // Add the new message to the current messages list immediately
-      if (data) {
-        setMessages(prev => [...prev, data]);
-      }
-      
-      // Also refetch to ensure we have the latest data
-      fetchMessages();
+      // Note: We don't need to manually add the message or refetch
+      // because realtime subscription will handle it automatically
+      console.log('Message sent successfully, realtime will handle the update');
 
       if (challengeId) {
         toast({
@@ -418,6 +405,11 @@ export default function Messages() {
               <h2 className="text-xl font-bold flex items-center gap-2">
                 <MessageCircle className="h-5 w-5" />
                 Messages
+                <div className={`w-2 h-2 rounded-full ${
+                  realtimeStatus === 'SUBSCRIBED' ? 'bg-green-500' : 
+                  realtimeStatus === 'CHANNEL_ERROR' || realtimeStatus === 'FAILED' ? 'bg-red-500' :
+                  realtimeStatus === 'TIMED_OUT' ? 'bg-yellow-500' : 'bg-gray-400'
+                }`} title={`Realtime: ${realtimeStatus}`} />
               </h2>
               <AddFriendDialog onFriendAdded={fetchFriends} />
             </div>
