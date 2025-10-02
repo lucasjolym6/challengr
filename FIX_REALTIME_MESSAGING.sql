@@ -11,7 +11,20 @@ WHERE pubname = 'supabase_realtime'
 ORDER BY tablename;
 
 -- Add messages table to realtime publication if not already there
-ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+DO $$
+BEGIN
+    -- Check if messages table is already in realtime publication
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+        AND tablename = 'messages'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+        RAISE NOTICE 'Messages table added to realtime publication';
+    ELSE
+        RAISE NOTICE 'Messages table is already in realtime publication';
+    END IF;
+END $$;
 
 -- 2. Check and fix RLS policies for messages table
 -- ===============================================
@@ -60,9 +73,33 @@ USING (auth.uid() = receiver_id);
 -- 3. Enable realtime for related tables
 -- ====================================
 
--- Add other tables that might be needed for realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE public.user_friends;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
+-- Add other tables that might be needed for realtime (only if not already there)
+DO $$
+BEGIN
+    -- Add user_friends if not already there
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+        AND tablename = 'user_friends'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.user_friends;
+        RAISE NOTICE 'user_friends table added to realtime publication';
+    ELSE
+        RAISE NOTICE 'user_friends table is already in realtime publication';
+    END IF;
+    
+    -- Add profiles if not already there
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+        AND tablename = 'profiles'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
+        RAISE NOTICE 'profiles table added to realtime publication';
+    ELSE
+        RAISE NOTICE 'profiles table is already in realtime publication';
+    END IF;
+END $$;
 
 -- 4. Create a function to test realtime connectivity
 -- ==================================================
