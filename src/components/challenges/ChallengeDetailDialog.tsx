@@ -314,34 +314,52 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
 
       // Upload proof image if provided
       if (submissionImage) {
-        const imageFileName = `${user.id}/${challenge.id}/${Date.now()}-${submissionImage.name}`;
-        const { data: imageData, error: imageError } = await supabase.storage
-          .from('user-uploads')
-          .upload(imageFileName, submissionImage);
+        try {
+          const imageFileName = `${user.id}/${challenge.id}/${Date.now()}-${submissionImage.name}`;
+          const { data: imageData, error: imageError } = await supabase.storage
+            .from('challenge-media')
+            .upload(imageFileName, submissionImage);
 
-        if (imageError) throw imageError;
-        
-        const { data: imageUrlData } = supabase.storage
-          .from('user-uploads')
-          .getPublicUrl(imageFileName);
-        
-        proofImageUrl = imageUrlData.publicUrl;
+          if (imageError) {
+            console.error('Storage error, skipping image upload:', imageError);
+            // Continue without image upload if storage fails
+            proofImageUrl = null;
+          } else {
+            const { data: imageUrlData } = supabase.storage
+              .from('challenge-media')
+              .getPublicUrl(imageFileName);
+            
+            proofImageUrl = imageUrlData.publicUrl;
+          }
+        } catch (storageError) {
+          console.error('Storage not available, skipping image upload:', storageError);
+          proofImageUrl = null;
+        }
       }
 
       // Upload proof video if provided
       if (submissionVideo) {
-        const videoFileName = `${user.id}/${challenge.id}/${Date.now()}-${submissionVideo.name}`;
-        const { data: videoData, error: videoError } = await supabase.storage
-          .from('user-uploads')
-          .upload(videoFileName, submissionVideo);
+        try {
+          const videoFileName = `${user.id}/${challenge.id}/${Date.now()}-${submissionVideo.name}`;
+          const { data: videoData, error: videoError } = await supabase.storage
+            .from('challenge-media')
+            .upload(videoFileName, submissionVideo);
 
-        if (videoError) throw videoError;
-        
-        const { data: videoUrlData } = supabase.storage
-          .from('user-uploads')
-          .getPublicUrl(videoFileName);
-        
-        proofVideoUrl = videoUrlData.publicUrl;
+          if (videoError) {
+            console.error('Storage error, skipping video upload:', videoError);
+            // Continue without video upload if storage fails
+            proofVideoUrl = null;
+          } else {
+            const { data: videoUrlData } = supabase.storage
+              .from('challenge-media')
+              .getPublicUrl(videoFileName);
+            
+            proofVideoUrl = videoUrlData.publicUrl;
+          }
+        } catch (storageError) {
+          console.error('Storage not available, skipping video upload:', storageError);
+          proofVideoUrl = null;
+        }
       }
 
       // Create submission record
