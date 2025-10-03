@@ -12,7 +12,8 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { Plus, Trophy, TrendingUp } from "lucide-react";
 import ChallengeDetailDialog from "@/components/challenges/ChallengeDetailDialog";
 import { CreateChallengeDialog } from "@/components/challenges/CreateChallengeDialog";
-import ChallengeDiscussion from "@/components/challenges/ChallengeDiscussion";
+import { DifficultyCircle } from "@/components/ui/difficulty-circle";
+// Feed moved to separate page
 
 // Import category images
 
@@ -45,6 +46,7 @@ interface Challenge {
     display_name: string | null;
     username: string;
     avatar_url: string | null;
+    level: string | null;
   } | null;
 }
 
@@ -129,10 +131,37 @@ const Challenges = () => {
         } else {
           challenges = challengesSimpleRes.data || [];
           
-          // Try to enrich with categories if we have them
+          // Fetch creator profiles
+          const creatorIds = [...new Set(challenges.map(c => c.created_by).filter(Boolean))];
+          let creatorProfiles: any[] = [];
+          
+          if (creatorIds.length > 0) {
+            try {
+              const profilesRes = await supabase
+                .from('profiles')
+                .select('user_id, display_name, username, avatar_url, level')
+                .in('user_id', creatorIds);
+              
+              if (!profilesRes.error) {
+                creatorProfiles = profilesRes.data || [];
+              }
+            } catch (error) {
+              console.warn('Failed to fetch creator profiles:', error);
+            }
+          }
+          
+          // Try to enrich with categories and profiles
           if (categories.length > 0) {
             try {
-              const enrichedChallenges = enrichChallengesWithCategories(challenges, categories);
+              const enrichedChallenges = challenges.map(challenge => ({
+                ...challenge,
+                challenge_categories: challenge.category_id ? 
+                  categories.find(cat => cat.id === challenge.category_id) || null : 
+                  null,
+                profiles: challenge.created_by ?
+                  creatorProfiles.find(profile => profile.user_id === challenge.created_by) || null :
+                  null
+              }));
               setChallenges(enrichedChallenges);
             } catch (error) {
               console.warn('Failed to enrich challenges, using simple data:', error);
@@ -389,24 +418,33 @@ const Challenges = () => {
   const companyChallenges = filteredChallenges.filter(c => c.type === 'company');
   const communityChallenges = filteredChallenges.filter(c => c.type === 'community');
 
-  const [showDiscussion, setShowDiscussion] = useState(false);
-  const [discussionChallengeId, setDiscussionChallengeId] = useState<string | null>(null);
+  // Discussion moved to separate page
 
   const openChallengeDetail = (challenge: Challenge) => {
     setSelectedChallenge(challenge);
     setShowDetailDialog(true);
   };
 
-  const openDiscussion = (challengeId: string) => {
-    setDiscussionChallengeId(challengeId);
-    setShowDiscussion(true);
-  };
+  // openDiscussion removed - using navigation instead
 
   const renderChallengeCard = (challenge: Challenge) => {
     const userChallenge = getUserChallengeStatus(challenge.id);
     const status = userChallenge?.status || 'to_do';
     const creatorName = challenge.profiles?.display_name || challenge.profiles?.username || 'Unknown';
     const creatorInitials = creatorName.substring(0, 2).toUpperCase();
+    const creatorLevel = challenge.profiles?.level || 'Beginner';
+    
+    // Get level badge color
+    const getLevelBadgeColor = (level: any) => {
+      const levelStr = String(level || '').toLowerCase();
+      switch (levelStr) {
+        case 'beginner': return 'bg-green-50 text-green-700 border-green-200';
+        case 'intermediate': return 'bg-blue-50 text-blue-700 border-blue-200';
+        case 'advanced': return 'bg-purple-50 text-purple-700 border-purple-200';
+        case 'expert': return 'bg-red-50 text-red-700 border-red-200';
+        default: return 'bg-gray-50 text-gray-700 border-gray-200';
+      }
+    };
 
     return (
       <Card 
@@ -458,8 +496,8 @@ const Challenges = () => {
           {/* Stats Row - Strava style */}
           <div className="flex items-center justify-between py-3 border-y border-border/50">
             <div className="flex flex-col items-center flex-1">
-              <span className="text-2xl font-bold text-foreground">{challenge.difficulty_level}</span>
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">Difficulty</span>
+              <DifficultyCircle level={challenge.difficulty_level} size="md" />
+              <span className="text-xs text-muted-foreground uppercase tracking-wide mt-1">Difficulty</span>
             </div>
             <div className="w-px h-10 bg-border/50" />
             <div className="flex flex-col items-center flex-1">
@@ -490,7 +528,12 @@ const Challenges = () => {
               <AvatarImage src={challenge.profiles?.avatar_url || undefined} />
               <AvatarFallback className="text-xs bg-muted">{creatorInitials}</AvatarFallback>
             </Avatar>
-            <span className="text-sm text-muted-foreground">by {creatorName}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">by <span className="font-medium text-foreground">{creatorName}</span></span>
+              <Badge variant="outline" className={`text-xs px-2 py-0.5 ${getLevelBadgeColor(creatorLevel)}`}>
+                {creatorLevel}
+              </Badge>
+            </div>
           </div>
 
           {/* CTA Button - Strava style full-width orange */}
@@ -657,28 +700,17 @@ const Challenges = () => {
         )}
       </div>
 
-      {/* Discussion Feed */}
-      {showDiscussion && discussionChallengeId && (
-        <ChallengeDiscussion
-          challengeId={discussionChallengeId}
-          onBack={() => {
-            setShowDiscussion(false);
-            setDiscussionChallengeId(null);
-          }}
-        />
-      )}
+      {/* Discussion Feed moved to separate page */}
 
       {/* Challenge Detail Dialog */}
-      {!showDiscussion && (
         <ChallengeDetailDialog
           challenge={selectedChallenge}
           userChallenge={selectedChallenge ? getUserChallengeStatus(selectedChallenge.id) : null}
           isOpen={showDetailDialog}
           onClose={() => setShowDetailDialog(false)}
           onStatusUpdate={fetchData}
-          onOpenDiscussion={openDiscussion}
+// onOpenDiscussion removed - using navigation instead
         />
-      )}
 
       <CreateChallengeDialog
         isOpen={showCreateDialog}

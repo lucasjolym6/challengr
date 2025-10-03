@@ -15,6 +15,7 @@ import Settings from "./pages/Settings";
 import ValidationQueue from "./pages/ValidationQueue";
 import Pricing from "./pages/Pricing";
 import Messages from "./pages/Messages";
+import ChallengeFeed from "./pages/ChallengeFeed";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,7 @@ const App = () => {
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/challenges" element={<Challenges />} />
+                <Route path="/feed/:challengeId" element={<ChallengeFeed />} />
                 <Route path="/community" element={<Community />} />
                 <Route path="/coaching" element={<Coaching />} />
                 <Route path="/messages" element={<Messages />} />

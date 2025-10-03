@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Play, Users, CheckCircle, Clock, Trophy, Target, XCircle } from "lucide-react";
+import { useNavigate } from 'react-router-dom';
 
 interface Challenge {
   id: string;
@@ -56,7 +57,7 @@ interface ChallengeDetailDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onStatusUpdate: () => void;
-  onOpenDiscussion?: (challengeId: string) => void;
+// onOpenDiscussion removed - using navigation instead
 }
 
 const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
@@ -64,11 +65,11 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
   userChallenge,
   isOpen,
   onClose,
-  onStatusUpdate,
-  onOpenDiscussion
+  onStatusUpdate
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [submissionText, setSubmissionText] = useState('');
   const [submissionImage, setSubmissionImage] = useState<File | null>(null);
   const [submissionVideo, setSubmissionVideo] = useState<File | null>(null);
@@ -502,18 +503,16 @@ const ChallengeDetailDialog: React.FC<ChallengeDetailDialogProps> = ({
           </div>
 
           {/* Discussion Button */}
-          {onOpenDiscussion && (
-            <Button 
-              variant="outline" 
-              className="w-full"
-              onClick={() => {
-                onClose();
-                onOpenDiscussion(challenge.id);
-              }}
-            >
-              💬 Voir le fil du défi
-            </Button>
-          )}
+          <Button 
+            variant="outline" 
+            className="w-full"
+            onClick={() => {
+              onClose();
+              navigate(`/feed/${challenge.id}`);
+            }}
+          >
+            💬 Voir le fil du défi
+          </Button>
 
           {/* Challenge Rules */}
           <div>
