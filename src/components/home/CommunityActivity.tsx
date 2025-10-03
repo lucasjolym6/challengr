@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Flame } from 'lucide-react';
+import { Rocket, Trophy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { HeroStat } from './HeroStat';
-import { KPIGrid } from './KPIGrid';
 import { SocialCarousel } from './SocialCarousel';
 import { getDailyKPIs } from '@/lib/kpiStore';
 
@@ -26,9 +25,7 @@ export const CommunityActivity: React.FC = () => {
   const { user } = useAuth();
   const [kpis, setKpis] = useState({
     challengesLaunchedToday: 0,
-    challengesCompletedThisWeek: 0,
-    streaksContinuedToday: 0,
-    validationRateToday: 0
+    challengesCompletedThisWeek: 0
   });
   const [activities, setActivities] = useState<SocialActivity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,7 +51,7 @@ export const CommunityActivity: React.FC = () => {
         .select(`
           id,
           status,
-          updated_at,
+          created_at,
           profiles!user_challenges_user_id_fkey (
             username,
             display_name,
@@ -69,7 +66,7 @@ export const CommunityActivity: React.FC = () => {
           )
         `)
         .in('status', ['completed', 'in_progress'])
-        .order('updated_at', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(10);
 
       if (error) {
@@ -89,7 +86,7 @@ export const CommunityActivity: React.FC = () => {
           challenge_title: item.challenges?.title || 'Unknown Challenge',
           category_name: item.challenges?.challenge_categories?.name || 'General',
           category_icon: item.challenges?.challenge_categories?.icon || '🎯',
-          time_ago: formatTimeAgo(item.updated_at)
+          time_ago: formatTimeAgo(item.created_at)
         }));
 
         setActivities(transformedActivities);
@@ -131,14 +128,27 @@ export const CommunityActivity: React.FC = () => {
     <div className="space-y-8">
       {/* Hero Stat */}
       <HeroStat
-        number={kpis.streaksContinuedToday}
-        label="🔥 streaks continued today"
-        subtitle="Proof that Challengr is alive, every single day"
-        icon={<Flame className="w-8 h-8 text-white" />}
+        number={kpis.challengesLaunchedToday}
+        label="challenges launched today"
+        subtitle="New adventures await!"
+        icon={<Rocket className="w-8 h-8 text-white" />}
       />
 
-      {/* KPI Grid */}
-      <KPIGrid kpis={kpis} />
+      {/* Weekly Progress Section */}
+      <div className="bg-white/60 backdrop-blur-sm border border-white/20 rounded-2xl p-6 shadow-lg">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <Trophy className="w-6 h-6 text-blue-600" />
+            <h3 className="text-xl font-bold text-gray-900">Challenges completed this week</h3>
+          </div>
+          <div className="text-3xl font-bold text-blue-600">
+            {kpis.challengesCompletedThisWeek}
+          </div>
+        </div>
+        <p className="text-sm text-gray-600">
+          On track to beat last week's record
+        </p>
+      </div>
 
       {/* Social Micro-Feed */}
       {activities.length > 0 && (

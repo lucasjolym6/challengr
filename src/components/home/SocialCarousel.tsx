@@ -47,9 +47,9 @@ const ActivityItem: React.FC<{ activity: SocialActivity; index: number }> = ({
   index 
 }) => {
   const actionText = {
-    completed: 'completed a challenge',
-    started: 'started a challenge',
-    milestone: 'reached a milestone'
+    completed: 'terminé',
+    started: 'commencé',
+    milestone: 'milestone'
   };
 
   return (
@@ -59,39 +59,43 @@ const ActivityItem: React.FC<{ activity: SocialActivity; index: number }> = ({
       transition={{ duration: 0.5, delay: index * 0.1 }}
       className="flex-shrink-0"
     >
-      <div className="bg-white/60 backdrop-blur-sm border border-white/20 rounded-2xl p-4 w-72 hover:bg-white/80 hover:shadow-md transition-all duration-300">
+      <div className="bg-white/90 backdrop-blur-sm border border-gray-200/50 rounded-2xl p-4 w-80 shadow-lg hover:shadow-xl hover:bg-white transition-all duration-300">
         <div className="flex items-start gap-3">
           {/* User Avatar */}
-          <Avatar className="w-10 h-10 border-2 border-white/50">
+          <Avatar className="w-12 h-12 border-2 border-white shadow-md">
             <AvatarImage src={activity.user.avatar_url || undefined} />
-            <AvatarFallback className="text-sm font-semibold bg-gradient-to-br from-blue-400 to-purple-400 text-white">
+            <AvatarFallback className="text-sm font-bold bg-gradient-to-br from-blue-400 to-purple-400 text-white">
               {activity.user.display_name?.charAt(0) || activity.user.username?.charAt(0) || 'U'}
             </AvatarFallback>
           </Avatar>
 
           <div className="flex-1 min-w-0">
-            {/* User Name + Action */}
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-semibold text-gray-900 text-sm">
+            {/* User Name */}
+            <div className="mb-2">
+              <span className="font-bold text-gray-900 text-base">
                 {activity.user.display_name || activity.user.username}
-              </span>
-              <ActivityIcon action={activity.action} />
-              <span className="text-gray-600 text-sm">
-                {actionText[activity.action as keyof typeof actionText]}
               </span>
             </div>
 
-            {/* Challenge Title */}
-            <div className="text-sm font-medium text-gray-800 mb-2 line-clamp-1">
-              {activity.challenge_title}
+            {/* Action + Challenge Title */}
+            <div className="mb-3">
+              <div className="flex items-center gap-2 mb-1">
+                <ActivityIcon action={activity.action} />
+                <span className="text-gray-700 text-sm font-medium">
+                  a {actionText[activity.action as keyof typeof actionText]}
+                </span>
+              </div>
+              <div className="text-sm font-semibold text-gray-800 line-clamp-2 leading-tight">
+                "{activity.challenge_title}"
+              </div>
             </div>
 
             {/* Category Badge + Time */}
             <div className="flex items-center justify-between">
-              <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-700">
+              <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-700 font-medium">
                 {activity.category_name}
               </Badge>
-              <span className="text-xs text-gray-500 flex items-center gap-1">
+              <span className="text-xs text-gray-500 flex items-center gap-1 font-medium">
                 <Clock className="w-3 h-3" />
                 {activity.time_ago}
               </span>
@@ -120,7 +124,7 @@ export const SocialCarousel: React.FC<SocialCarouselProps> = ({ activities }) =>
         <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
       </div>
 
-      <div className="relative">
+      <div className="relative -mx-4 px-4">
         <div className="overflow-x-auto scrollbar-hide">
           <div className="flex gap-4 pb-2" style={{ scrollSnapType: 'x mandatory' }}>
             {activities.map((activity, index) => (
@@ -131,9 +135,9 @@ export const SocialCarousel: React.FC<SocialCarouselProps> = ({ activities }) =>
           </div>
         </div>
 
-        {/* Gradient fade edges */}
-        <div className="absolute top-0 left-0 w-8 h-full bg-gradient-to-r from-background to-transparent pointer-events-none" />
-        <div className="absolute top-0 right-0 w-8 h-full bg-gradient-to-l from-background to-transparent pointer-events-none" />
+        {/* Gradient fade edges - collés aux bords */}
+        <div className="absolute top-0 left-0 w-12 h-full bg-gradient-to-r from-white via-white/80 to-transparent pointer-events-none z-10" />
+        <div className="absolute top-0 right-0 w-12 h-full bg-gradient-to-l from-white via-white/80 to-transparent pointer-events-none z-10" />
       </div>
     </motion.div>
   );

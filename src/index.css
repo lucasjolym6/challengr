@@ -26,6 +26,23 @@
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
+/* Mobile carousel optimizations */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Smooth scrolling for mobile */
+@supports (-webkit-overflow-scrolling: touch) {
+  .scrollbar-hide {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 /* Challengr Design System - Instagram/Strava Inspired */
 
 @layer base {

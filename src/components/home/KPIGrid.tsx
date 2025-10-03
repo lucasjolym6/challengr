@@ -75,8 +75,6 @@ interface KPIGridProps {
   kpis: {
     challengesLaunchedToday: number;
     challengesCompletedThisWeek: number;
-    streaksContinuedToday: number;
-    validationRateToday: number;
   };
 }
 
@@ -86,7 +84,7 @@ export const KPIGrid: React.FC<KPIGridProps> = ({ kpis }) => {
       icon: <Zap className="w-6 h-6" />,
       number: kpis.challengesLaunchedToday,
       title: "Challenges launched today",
-      caption: "+12% vs yesterday",
+      caption: "New adventures await!",
       color: "text-green-600",
       iconBg: "bg-green-100",
       delay: 0.1
@@ -99,29 +97,11 @@ export const KPIGrid: React.FC<KPIGridProps> = ({ kpis }) => {
       color: "text-blue-600",
       iconBg: "bg-blue-100",
       delay: 0.2
-    },
-    {
-      icon: <Flame className="w-6 h-6" />,
-      number: kpis.streaksContinuedToday,
-      title: "Streaks continued today",
-      caption: "Avg streak length: 4.2 days",
-      color: "text-orange-600",
-      iconBg: "bg-orange-100",
-      delay: 0.3
-    },
-    {
-      icon: <CheckCircle className="w-6 h-6" />,
-      number: kpis.validationRateToday,
-      title: "Validation rate today",
-      caption: "Top category: Cooking",
-      color: "text-purple-600",
-      iconBg: "bg-purple-100",
-      delay: 0.4
     }
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4">
       {tiles.map((tile, index) => (
         <KPITile key={index} {...tile} />
       ))}
