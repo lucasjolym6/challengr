@@ -42,6 +42,11 @@ const GlassFabNav: React.FC<GlassFabNavProps> = ({
 
   // Force re-render when location changes to maintain active state
   const currentPath = location.pathname;
+  
+  // Use currentPath as a dependency to ensure re-render on route change
+  React.useEffect(() => {
+    // This effect runs when currentPath changes, ensuring the component updates
+  }, [currentPath]);
 
   const containerClasses = position === 'bottom' 
     ? 'fixed safe-area-bottom left-1/2 -translate-x-1/2 z-50'

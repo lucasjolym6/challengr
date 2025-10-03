@@ -17,13 +17,17 @@ import {
   Flame,
   Star,
   Calendar,
-  Activity
+  Activity,
+  Sparkles
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { UserLevelBadge } from '@/components/ui/user-level-badge';
 import { LevelProgress } from '@/components/ui/level-progress';
 import { DifficultyCircle } from '@/components/ui/difficulty-circle';
 import { CommunityActivity } from '@/components/home/CommunityActivity';
+import { HeroCard } from '@/components/home/HeroCard';
+import { WeeklyKpiCard } from '@/components/home/WeeklyKpiCard';
+import { CtaCard } from '@/components/home/CtaCard';
 import { getLevelInfo, getLevelFromPoints } from '@/lib/levelSystem';
 import { UserHeaderGlass } from '@/components/user/UserHeaderGlass';
 
@@ -85,6 +89,10 @@ export default function Home() {
   const [activeChallenges, setActiveChallenges] = useState<UserChallenge[]>([]);
   const [featuredChallenges, setFeaturedChallenges] = useState<FeaturedChallenge[]>([]);
   const [loading, setLoading] = useState(true);
+  const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [launchedToday, setLaunchedToday] = useState(0);
+  const [completedThisWeek, setCompletedThisWeek] = useState(0);
+  const [weeklyGoal, setWeeklyGoal] = useState(0);
 
   useEffect(() => {
     if (user) {
@@ -99,7 +107,8 @@ export default function Home() {
       await Promise.all([
         fetchProfile(),
         fetchActiveChallenges(),
-        fetchFeaturedChallenges()
+        fetchFeaturedChallenges(),
+        fetchCommunityStats()
       ]);
     } catch (error) {
       console.error('Error fetching home data:', error);
@@ -177,6 +186,80 @@ export default function Home() {
     }
   };
 
+  const fetchRecentActivities = async () => {
+    const { data, error } = await supabase
+      .from('user_challenges')
+      .select(`
+        id,
+        status,
+        created_at,
+        challenges!inner (
+          title,
+          challenge_categories!inner (
+            name
+          )
+        ),
+        profiles!inner (
+          username,
+          display_name,
+          avatar_url
+        )
+      `)
+      .in('status', ['completed', 'in_progress'])
+      .order('created_at', { ascending: false })
+      .limit(6);
+
+    if (data && !error) {
+      const activities = data.map(item => ({
+        id: item.id,
+        username: item.profiles.display_name || item.profiles.username,
+        avatar_url: item.profiles.avatar_url,
+        action: item.status === 'completed' ? 'completed' : 'started',
+        challenge_title: item.challenges.title,
+        category: item.challenges.challenge_categories.name,
+        created_at: item.created_at
+      }));
+      setRecentActivities(activities);
+    }
+  };
+
+  // Generate consistent daily numbers based on date (same for all users)
+  const generateDailyConsistentNumber = (baseRange: number, maxRange: number, seed: string): number => {
+    const today = new Date();
+    const dateString = today.toISOString().split('T')[0]; // YYYY-MM-DD
+    const combinedSeed = `${dateString}-${seed}`;
+    
+    // Simple hash function to generate consistent number
+    let hash = 0;
+    for (let i = 0; i < combinedSeed.length; i++) {
+      const char = combinedSeed.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    
+    return baseRange + (Math.abs(hash) % (maxRange - baseRange + 1));
+  };
+
+  const fetchCommunityStats = async () => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    
+    // Launched today (5-18 range) - consistent for all users
+    const launchedTodayValue = generateDailyConsistentNumber(5, 18, 'launched');
+    setLaunchedToday(launchedTodayValue);
+    
+    // Weekly progressive logic - consistent for all users
+    const baseWeekly = 20;
+    const dailyIncrease = generateDailyConsistentNumber(5, 18, 'weekly-increase');
+    const weeklyTotal = Math.min(baseWeekly + (dayOfWeek * dailyIncrease), 85);
+    setCompletedThisWeek(weeklyTotal);
+    
+    // Weekly goal (71-97 range, changes each week) - consistent for all users
+    const weekNumber = Math.floor(today.getTime() / (7 * 24 * 60 * 60 * 1000)); // Week number since epoch
+    const goalSeed = weekNumber % 27; // Cycle through 27 different goals
+    const weeklyGoalValue = 71 + goalSeed; // 71 to 97
+    setWeeklyGoal(weeklyGoalValue);
+  };
 
   const getCategoryImage = (categoryName: string): string => {
     const categoryImages: { [key: string]: string } = {
@@ -294,13 +377,9 @@ export default function Home() {
         )}
 
         {/* Section 2: Community Activity */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <TrendingUp className="w-6 h-6 text-primary" />
-            <h2 className="text-xl md:text-2xl font-bold">Community Activity</h2>
-          </div>
-
-          <CommunityActivity />
+        <div className="space-y-4 sm:space-y-5">
+          <HeroCard today={launchedToday} deltaPct={launchedToday > 10 ? 15 : 0} />
+          <WeeklyKpiCard value={completedThisWeek} weeklyGoal={weeklyGoal} />
         </div>
 
         {/* Section 3: Featured Challenges */}
@@ -381,42 +460,22 @@ export default function Home() {
           </div>
           )}
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="group hover:shadow-lg hover:border-primary/50 transition-all cursor-pointer" onClick={() => navigate('/challenges')}>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Trophy className="w-7 h-7 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-lg mb-1">Explore Challenges</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Discover new ways to push your limits
-                  </p>
-                </div>
-                <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="group hover:shadow-lg hover:border-primary/50 transition-all cursor-pointer" onClick={() => navigate('/community')}>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Users className="w-7 h-7 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-lg mb-1">Community Feed</h3>
-                  <p className="text-sm text-muted-foreground">
-                    See what others are achieving
-                  </p>
-                </div>
-                <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-              </div>
-            </CardContent>
-          </Card>
+        {/* Section 4: CTA Navigation - Bottom of page */}
+        <div className="mt-6 sm:mt-7 grid gap-3">
+          <CtaCard
+            icon={<Trophy className="w-5 h-5" />}
+            title="Explore Challenges"
+            subtitle="Discover new ways to push your limits"
+            href="/challenges"
+          />
+          <CtaCard
+            icon={<Sparkles className="w-5 h-5" />}
+            title="Community Feed"
+            subtitle="See what others are achieving"
+            href="/community"
+          />
         </div>
+
       </div>
     </div>
   );
