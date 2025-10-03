@@ -293,6 +293,7 @@ export type Database = {
         Row: {
           challenge_id: string | null
           content: string | null
+          conversation_id: string
           created_at: string
           id: string
           read_at: string | null
@@ -302,6 +303,7 @@ export type Database = {
         Insert: {
           challenge_id?: string | null
           content?: string | null
+          conversation_id: string
           created_at?: string
           id?: string
           read_at?: string | null
@@ -311,6 +313,7 @@ export type Database = {
         Update: {
           challenge_id?: string | null
           content?: string | null
+          conversation_id?: string
           created_at?: string
           id?: string
           read_at?: string | null
@@ -323,6 +326,13 @@ export type Database = {
             columns: ["challenge_id"]
             isOneToOne: false
             referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
             referencedColumns: ["id"]
           },
         ]
@@ -707,6 +717,115 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      conversations: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          name: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          name?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversation_members: {
+        Row: {
+          conversation_id: string
+          id: string
+          joined_at: string
+          last_read_at: string | null
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          id?: string
+          joined_at?: string
+          last_read_at?: string | null
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          id?: string
+          joined_at?: string
+          last_read_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_members_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_conversation_settings: {
+        Row: {
+          allow_member_invites: boolean | null
+          conversation_id: string
+          created_at: string
+          id: string
+          only_admins_can_send_messages: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          allow_member_invites?: boolean | null
+          conversation_id: string
+          created_at?: string
+          id?: string
+          only_admins_can_send_messages?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          allow_member_invites?: boolean | null
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          only_admins_can_send_messages?: boolean | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_conversation_settings_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

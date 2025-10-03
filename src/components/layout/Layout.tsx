@@ -136,7 +136,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="min-h-screen bg-background">
       {/* Top Bar - iOS 26 style with 3 separate glass elements - Hidden on Messages and Profile pages */}
       {!location.pathname.startsWith('/messages') && !location.pathname.startsWith('/profile') && (
-        <div className="fixed top-4 left-4 right-4 z-50 flex items-center justify-between gap-3 md:hidden">
+      <div className="fixed top-4 left-4 right-4 z-50 flex items-center justify-between gap-3 md:hidden">
         {/* Profile Button - Left */}
         <Link to="/profile" className="flex-shrink-0">
           <Button
