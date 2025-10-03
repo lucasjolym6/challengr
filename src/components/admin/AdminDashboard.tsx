@@ -82,11 +82,11 @@ export function AdminDashboard() {
         .from('submission_reports')
         .select(`
           *,
-          user_challenges (
-            challenges (
+          user_challenges!submission_reports_user_challenge_id_fkey (
+            challenges!user_challenges_challenge_id_fkey (
               title
             ),
-            profiles (
+            profiles!user_challenges_user_id_fkey (
               username
             )
           )

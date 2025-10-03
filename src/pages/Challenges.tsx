@@ -152,7 +152,7 @@ const Challenges = () => {
         try {
           const userChallengesRes = await supabase.from('user_challenges').select(`
             *,
-            challenges (*)
+            challenges!user_challenges_challenge_id_fkey (*)
           `).eq('user_id', user.id);
           
           if (userChallengesRes.error) {

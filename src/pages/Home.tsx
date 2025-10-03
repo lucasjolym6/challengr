@@ -82,14 +82,14 @@ export default function Home() {
       .select(`
         id,
         status,
-        challenges (
+        challenges!user_challenges_challenge_id_fkey (
           title,
           description,
           image_url,
           points_reward,
           difficulty_level,
           category_id,
-          challenge_categories (
+          challenge_categories!challenges_category_id_fkey (
             name,
             icon
           )

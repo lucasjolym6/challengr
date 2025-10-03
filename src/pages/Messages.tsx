@@ -11,8 +11,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { MessageCircle, Send, Share2, Search, Users as UsersIcon, ArrowLeft } from "lucide-react";
 import { SharedChallengeCard } from "@/components/messages/SharedChallengeCard";
-import { AddFriendDialog } from "@/components/messages/AddFriendDialog";
-import { useRealtimeMessages } from "@/hooks/useRealtimeMessages";
 import { format } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -70,7 +68,6 @@ export default function Messages() {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showChat, setShowChat] = useState(false);
-  const [realtimeStatus, setRealtimeStatus] = useState<string>('DISCONNECTED');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -80,39 +77,37 @@ export default function Messages() {
     }
   }, [user]);
 
-  // Setup realtime messaging
-  const { reconnect } = useRealtimeMessages({
-    selectedFriendId: selectedFriend?.profiles.user_id || null,
-    onNewMessage: (message: Message) => {
-      console.log('New realtime message:', message);
-      setMessages(prev => {
-        // Check if message already exists to avoid duplicates
-        const exists = prev.some(m => m.id === message.id);
-        if (exists) {
-          console.log('Message already exists, skipping duplicate');
-          return prev;
-        }
-        
-        const updated = [...prev, message];
-        console.log('Updated messages list:', updated);
-        return updated;
-      });
-      scrollToBottom();
-      
-      // Mark as read if we're the receiver
-      if (message.receiver_id === user?.id) {
-        markAsRead(message.id);
-      }
-    },
-    onConnectionStatusChange: (status: string) => {
-      setRealtimeStatus(status);
-      console.log('Realtime status changed:', status);
-    }
-  });
-
   useEffect(() => {
     if (selectedFriend && user) {
       fetchMessages();
+      
+      // Set up realtime subscription for new messages
+      const channel = supabase
+        .channel('messages')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `receiver_id=eq.${user.id}`
+          },
+          (payload) => {
+            const newMsg = payload.new as Message;
+            const friendId = selectedFriend.profiles.user_id;
+            
+            if (newMsg.sender_id === friendId) {
+              setMessages(prev => [...prev, newMsg]);
+              scrollToBottom();
+              markAsRead(newMsg.id);
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [selectedFriend, user]);
 
@@ -127,162 +122,87 @@ export default function Messages() {
   const fetchFriends = async () => {
     if (!user) return;
 
-    console.log('Fetching friends for user:', user.id);
+    // Fetch friends where current user is user_id
+    const { data: friendsAsUser } = await supabase
+      .from('user_friends')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('status', 'accepted');
 
-    try {
-      // Fetch friends where current user is user_id
-      const { data: friendsAsUser, error: error1 } = await supabase
-        .from('user_friends')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('status', 'accepted');
+    // Fetch friends where current user is friend_id
+    const { data: friendsAsFriend } = await supabase
+      .from('user_friends')
+      .select('*')
+      .eq('friend_id', user.id)
+      .eq('status', 'accepted');
 
-      console.log('Friends as user result:', { friendsAsUser, error1 });
+    const allFriendships = [...(friendsAsUser || []), ...(friendsAsFriend || [])];
 
-      // Fetch friends where current user is friend_id
-      const { data: friendsAsFriend, error: error2 } = await supabase
-        .from('user_friends')
-        .select('*')
-        .eq('friend_id', user.id)
-        .eq('status', 'accepted');
+    if (allFriendships.length > 0) {
+      // Extract friend IDs from both directions
+      const friendIds = allFriendships.map(f => 
+        f.user_id === user.id ? f.friend_id : f.user_id
+      );
 
-      console.log('Friends as friend result:', { friendsAsFriend, error2 });
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('user_id, username, display_name, avatar_url')
+        .in('user_id', friendIds);
 
-      const allFriendships = [...(friendsAsUser || []), ...(friendsAsFriend || [])];
-      console.log('All friendships:', allFriendships);
+      const friendsWithProfiles = allFriendships.map(friend => {
+        const friendUserId = friend.user_id === user.id ? friend.friend_id : friend.user_id;
+        const profile = profilesData?.find(p => p.user_id === friendUserId);
+        return {
+          ...friend,
+          profiles: profile || {
+            user_id: friendUserId,
+            username: 'Unknown',
+            display_name: 'Unknown User',
+            avatar_url: ''
+          }
+        };
+      });
 
-      if (allFriendships.length > 0) {
-        // Extract friend IDs from both directions
-        const friendIds = allFriendships.map(f => 
-          f.user_id === user.id ? f.friend_id : f.user_id
-        );
-
-        console.log('Friend IDs to fetch profiles for:', friendIds);
-
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('user_id, username, display_name, avatar_url')
-          .in('user_id', friendIds);
-
-        console.log('Profiles data result:', { profilesData, profilesError });
-
-        const friendsWithProfiles = allFriendships.map(friend => {
-          const friendUserId = friend.user_id === user.id ? friend.friend_id : friend.user_id;
-          const profile = profilesData?.find(p => p.user_id === friendUserId);
-          return {
-            ...friend,
-            profiles: profile || {
-              user_id: friendUserId,
-              username: 'Unknown',
-              display_name: 'Unknown User',
-              avatar_url: ''
-            }
-          };
-        });
-
-        console.log('Friends with profiles:', friendsWithProfiles);
-        setFriends(friendsWithProfiles as Friend[]);
-      } else {
-        console.log('No friendships found, setting empty friends list');
-        setFriends([]);
-      }
-    } catch (error) {
-      console.error('Error fetching friends:', error);
+      setFriends(friendsWithProfiles as Friend[]);
+    } else {
       setFriends([]);
     }
   };
 
   const fetchMessages = async () => {
-    if (!user || !selectedFriend) {
-      console.log('Cannot fetch messages:', { user: !!user, selectedFriend: !!selectedFriend });
+    if (!user || !selectedFriend) return;
+
+    const friendId = selectedFriend.profiles.user_id;
+
+    const { data, error } = await supabase
+      .from('messages')
+      .select(`
+        *,
+        challenges!messages_challenge_id_fkey (
+          id,
+          title,
+          description,
+          image_url,
+          challenge_categories!challenges_category_id_fkey (
+            name,
+            icon
+          )
+        )
+      `)
+      .or(`and(sender_id.eq.${user.id},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${user.id})`)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching messages:', error);
       return;
     }
 
-    const friendId = selectedFriend.profiles.user_id;
-    console.log('Fetching messages between:', { user_id: user.id, friend_id: friendId });
+    setMessages(data || []);
 
-    try {
-      // First, get messages without joins to avoid relationship issues
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .or(`and(sender_id.eq.${user.id},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${user.id})`)
-        .order('created_at', { ascending: true });
-
-      console.log('Messages fetch result:', { data, error });
-
-      if (error) {
-        console.error('Error fetching messages:', error);
-        toast({
-          title: "Error",
-          description: `Failed to load messages: ${error.message}`,
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // If we have messages with challenge_id, fetch challenge details separately
-      if (data && data.length > 0) {
-        const challengeIds = data
-          .filter(msg => msg.challenge_id)
-          .map(msg => msg.challenge_id);
-
-        if (challengeIds.length > 0) {
-          console.log('Fetching challenge details for:', challengeIds);
-          
-          const { data: challengesData, error: challengesError } = await supabase
-            .from('challenges')
-            .select(`
-              id,
-              title,
-              description,
-              image_url,
-              challenge_categories!category_id (
-                name,
-                icon
-              )
-            `)
-            .in('id', challengeIds);
-
-          console.log('Challenges fetch result:', { challengesData, challengesError });
-
-          if (!challengesError && challengesData) {
-            // Merge challenge data with messages
-            const enrichedMessages = data.map(msg => ({
-              ...msg,
-              challenges: msg.challenge_id 
-                ? challengesData.find(c => c.id === msg.challenge_id)
-                : null
-            }));
-            
-            console.log('Setting enriched messages:', enrichedMessages);
-            setMessages(enrichedMessages);
-          } else {
-            console.log('Setting messages without challenge details:', data);
-            setMessages(data);
-          }
-        } else {
-          console.log('Setting messages without challenges:', data);
-          setMessages(data);
-        }
-      } else {
-        console.log('No messages found, setting empty array');
-        setMessages([]);
-      }
-
-      // Mark unread messages as read
-      const unreadIds = data?.filter(m => m.receiver_id === user.id && !m.read_at).map(m => m.id) || [];
-      console.log('Unread message IDs:', unreadIds);
-      if (unreadIds.length > 0) {
-        unreadIds.forEach(id => markAsRead(id));
-      }
-    } catch (error) {
-      console.error('Unexpected error fetching messages:', error);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred while loading messages",
-        variant: "destructive"
-      });
+    // Mark unread messages as read
+    const unreadIds = data?.filter(m => m.receiver_id === user.id && !m.read_at).map(m => m.id) || [];
+    if (unreadIds.length > 0) {
+      unreadIds.forEach(id => markAsRead(id));
     }
   };
 
@@ -294,7 +214,7 @@ export default function Messages() {
         title,
         description,
         image_url,
-        challenge_categories (
+        challenge_categories!challenges_category_id_fkey (
           name,
           icon
         )
@@ -315,61 +235,35 @@ export default function Messages() {
   };
 
   const sendMessage = async (challengeId?: string) => {
-    if (!user || !selectedFriend || (!newMessage.trim() && !challengeId)) {
-      console.log('Cannot send message:', { user: !!user, selectedFriend: !!selectedFriend, newMessage: newMessage.trim(), challengeId });
+    if (!user || !selectedFriend || (!newMessage.trim() && !challengeId)) return;
+
+    const friendId = selectedFriend.profiles.user_id;
+
+    const { error } = await supabase
+      .from('messages')
+      .insert({
+        sender_id: user.id,
+        receiver_id: friendId,
+        content: challengeId ? null : newMessage.trim(),
+        challenge_id: challengeId || null
+      });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send message",
+        variant: "destructive"
+      });
       return;
     }
 
-    const friendId = selectedFriend.profiles.user_id;
-    console.log('Sending message:', { sender_id: user.id, receiver_id: friendId, content: newMessage.trim(), challengeId });
+    setNewMessage('');
+    fetchMessages();
 
-    try {
-      const { data, error } = await supabase
-        .from('messages')
-        .insert({
-          sender_id: user.id,
-          receiver_id: friendId,
-          content: challengeId ? null : newMessage.trim(),
-          challenge_id: challengeId || null
-        })
-        .select()
-        .single();
-
-      console.log('Message send result:', { data, error });
-
-      if (error) {
-        console.error('Error sending message:', error);
-        toast({
-          title: "Error",
-          description: `Failed to send message: ${error.message}`,
-          variant: "destructive"
-        });
-        return;
-      }
-
-      setNewMessage('');
-      
-      // Note: We don't need to manually add the message or refetch
-      // because realtime subscription will handle it automatically
-      console.log('Message sent successfully, realtime will handle the update');
-
-      if (challengeId) {
-        toast({
-          title: "Challenge Shared!",
-          description: "Your friend can now start this challenge"
-        });
-      } else {
-        toast({
-          title: "Message Sent!",
-          description: "Your message has been delivered"
-        });
-      }
-    } catch (error) {
-      console.error('Unexpected error sending message:', error);
+    if (challengeId) {
       toast({
-        title: "Error",
-        description: "An unexpected error occurred while sending the message",
-        variant: "destructive"
+        title: "Challenge Shared!",
+        description: "Your friend can now start this challenge"
       });
     }
   };
@@ -401,18 +295,10 @@ export default function Messages() {
       {showFriendsList && (
         <div className={`${isMobile ? 'w-full' : 'w-80 border-r'} flex flex-col bg-card`}>
           <div className="border-b px-4 py-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <MessageCircle className="h-5 w-5" />
-                Messages
-                <div className={`w-2 h-2 rounded-full ${
-                  realtimeStatus === 'SUBSCRIBED' ? 'bg-green-500' : 
-                  realtimeStatus === 'CHANNEL_ERROR' || realtimeStatus === 'FAILED' ? 'bg-red-500' :
-                  realtimeStatus === 'TIMED_OUT' ? 'bg-yellow-500' : 'bg-gray-400'
-                }`} title={`Realtime: ${realtimeStatus}`} />
-              </h2>
-              <AddFriendDialog onFriendAdded={fetchFriends} />
-            </div>
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <MessageCircle className="h-5 w-5" />
+              Messages
+            </h2>
           </div>
           
           <ScrollArea className="flex-1">

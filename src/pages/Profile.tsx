@@ -193,11 +193,11 @@ export default function Profile() {
         completed_at,
         proof_text,
         proof_image_url,
-        challenges (
+        challenges!user_challenges_challenge_id_fkey (
           title,
           description,
           points_reward,
-          challenge_categories (
+          challenge_categories!challenges_category_id_fkey (
             name,
             icon
           )
