@@ -4,7 +4,7 @@ import { AuthPage } from '@/components/auth/AuthPage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Search, MessageCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import userCircleIcon from '../../../icons/user-circle-Stroke-Rounded.png';
@@ -23,6 +23,7 @@ interface Profile {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -47,8 +48,33 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      window.location.href = `/challenges?search=${encodeURIComponent(searchQuery.trim())}`;
+      const currentPath = location.pathname;
+      
+      if (currentPath.startsWith('/community')) {
+        // Search in community posts
+        window.location.href = `/community?search=${encodeURIComponent(searchQuery.trim())}`;
+      } else if (currentPath.startsWith('/challenges')) {
+        // Search in challenges
+        window.location.href = `/challenges?search=${encodeURIComponent(searchQuery.trim())}`;
+      } else {
+        // Default to challenges search
+        window.location.href = `/challenges?search=${encodeURIComponent(searchQuery.trim())}`;
+      }
+      
       setSearchQuery('');
+    }
+  };
+
+  // Get search placeholder based on current page
+  const getSearchPlaceholder = () => {
+    const currentPath = location.pathname;
+    
+    if (currentPath.startsWith('/community')) {
+      return 'Search posts...';
+    } else if (currentPath.startsWith('/challenges')) {
+      return 'Search challenges...';
+    } else {
+      return 'Search challenges...';
     }
   };
 
@@ -92,7 +118,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Search challenges..."
+              placeholder={getSearchPlaceholder()}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-12 pl-10 pr-4 glass glass-transition rounded-2xl border-0 bg-transparent text-foreground placeholder:text-muted-foreground focus:ring-0"

@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Filter, TrendingUp, Clock, Users, Star, ChevronDown } from "lucide-react";
+import { Filter, TrendingUp, Clock, Users, Star, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import PostCard from './PostCard';
 import FeedFilters, { FilterType } from './FeedFilters';
@@ -90,7 +89,6 @@ const CommunityFeed: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [sortMode, setSortMode] = useState<SortMode>('smart');
   const [activeFilters, setActiveFilters] = useState<FilterType[]>(['all']);
-  const [searchQuery, setSearchQuery] = useState('');
   const [showTrending, setShowTrending] = useState(false);
   
   // Animation for filter changes
@@ -101,7 +99,7 @@ const CommunityFeed: React.FC = () => {
 
   useEffect(() => {
     fetchPosts();
-  }, [sortMode, activeFilters, searchQuery]);
+  }, [sortMode, activeFilters]);
 
   const fetchPosts = async () => {
     try {
@@ -222,17 +220,6 @@ const CommunityFeed: React.FC = () => {
                   };
                 });
 
-              // Apply search after transformation (so we can search in challenge names too)
-              if (searchQuery) {
-                const searchLower = searchQuery.toLowerCase();
-                transformedPosts = transformedPosts.filter(post => 
-                  post.content?.toLowerCase().includes(searchLower) ||
-                  post.challenge.title.toLowerCase().includes(searchLower) ||
-                  post.challenge.description?.toLowerCase().includes(searchLower) ||
-                  post.user.username.toLowerCase().includes(searchLower) ||
-                  post.hashtags.some(tag => tag.toLowerCase().includes(searchLower))
-                );
-              }
 
       // If no real data, add some mock discussion-focused posts for demo
       if (transformedPosts.length === 0) {
@@ -493,20 +480,6 @@ const CommunityFeed: React.FC = () => {
     <div className="w-full max-w-md mx-auto px-4 py-6">
       {/* iOS26-Inspired Header */}
       <div className="space-y-4 mb-6">
-        {/* Search Bar - Glassmorphic */}
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <Input
-            placeholder="Rechercher..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-12 h-12 rounded-2xl border-0 bg-white/60 backdrop-blur-xl shadow-lg focus:ring-2 focus:ring-orange-400/50 focus:bg-white/80 transition-all duration-300"
-            style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.6) 100%)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.5)'
-            }}
-          />
-        </div>
 
         {/* Sort Buttons - Glassmorphic Pills */}
         <div className="flex gap-2 overflow-x-auto pb-2">
