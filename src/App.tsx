@@ -11,6 +11,7 @@ import Challenges from "./pages/Challenges";
 import Community from "./pages/Community";
 import Coaching from "./pages/Coaching";
 import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
 import ValidationQueue from "./pages/ValidationQueue";
 import Pricing from "./pages/Pricing";
 import Messages from "./pages/Messages";
@@ -45,6 +46,7 @@ const App = () => {
                 <Route path="/messages" element={<Messages />} />
                 <Route path="/validation" element={<ValidationQueue />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/settings" element={<Settings />} />
                 <Route path="/pricing" element={<Pricing />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />

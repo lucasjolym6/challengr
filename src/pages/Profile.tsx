@@ -27,7 +27,10 @@ import {
   Target,
   Calendar,
   Image as ImageIcon,
-  CheckCircle
+  CheckCircle,
+  Clock,
+  Zap,
+  Sparkles
 } from "lucide-react";
 
 interface Profile {
@@ -721,51 +724,112 @@ export default function Profile() {
           <TabsTrigger value="friends" className="text-xs md:text-sm">Friends</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="completed" className="space-y-3">
+        <TabsContent value="completed" className="space-y-4">
           {completedChallenges.length === 0 ? (
-            <div className="text-center py-12">
-              <Trophy className="h-16 w-16 text-muted-foreground mx-auto mb-3 opacity-50" />
-              <p className="text-sm text-muted-foreground">
-                No completed challenges yet
+            <div className="text-center py-16">
+              <div className="relative mb-6">
+                <Trophy className="h-20 w-20 text-muted-foreground mx-auto opacity-30" />
+                <div className="absolute -top-2 -right-2">
+                  <Sparkles className="h-6 w-6 text-yellow-500 opacity-60" />
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold mb-2">No completed challenges yet</h3>
+              <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                Start your journey by completing your first challenge and watch your achievements grow!
               </p>
             </div>
           ) : (
-            completedChallenges.map((challenge) => (
-              <Card key={challenge.id} className="overflow-hidden">
-                {challenge.proof_image_url && (
-                  <div className="relative h-64 md:h-80 bg-muted">
-                    <img 
-                      src={challenge.proof_image_url} 
-                      alt="Challenge proof" 
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3 mb-2">
-                    <span className="text-2xl flex-shrink-0">
-                      {challenge.challenges.challenge_categories?.icon || '🎯'}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold leading-tight mb-1">
-                        {challenge.challenges.title}
-                      </h3>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(challenge.completed_at).toLocaleDateString()}
-                      </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {completedChallenges.map((challenge) => (
+                <Card key={challenge.id} className="group hover:shadow-lg transition-all duration-300 border-border/50 hover:border-primary/20 overflow-hidden">
+                  {/* Challenge Image */}
+                  {challenge.proof_image_url && (
+                    <div className="relative h-48 bg-gradient-to-br from-muted/50 to-muted overflow-hidden">
+                      <img 
+                        src={challenge.proof_image_url} 
+                        alt="Challenge proof" 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                      <div className="absolute top-3 right-3">
+                        <div className="flex items-center gap-1 bg-green-500/90 backdrop-blur-sm text-white px-2 py-1 rounded-full text-xs font-medium">
+                          <CheckCircle className="h-3 w-3" />
+                          Completed
+                        </div>
+                      </div>
                     </div>
-                    <Badge variant="default" className="text-xs">
-                      +{challenge.challenges.points_reward}
-                    </Badge>
-                  </div>
-                  {challenge.proof_text && (
-                    <p className="text-sm text-muted-foreground mt-2">
-                      {challenge.proof_text}
-                    </p>
                   )}
-                </CardContent>
-              </Card>
-            ))
+                  
+                  <CardContent className="p-5">
+                    {/* Header with icon and category */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-lg">
+                          {challenge.challenges.challenge_categories?.icon || '🎯'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold text-base leading-tight mb-1 line-clamp-2">
+                            {challenge.challenges.title}
+                          </h3>
+                          <div className="flex items-center gap-2">
+                            <Badge 
+                              variant="secondary" 
+                              className="text-xs bg-primary/10 text-primary border-primary/20"
+                            >
+                              {challenge.challenges.challenge_categories?.name || 'General'}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Points badge */}
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge variant="default" className="text-xs font-semibold bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-0">
+                          +{challenge.challenges.points_reward} pts
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {/* Progress indicator */}
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                        <span>Progress</span>
+                        <span className="font-medium text-green-600">100%</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2">
+                        <div className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full w-full flex items-center justify-end pr-1">
+                          <CheckCircle className="h-3 w-3 text-white" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Completion date */}
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+                      <Calendar className="h-3 w-3" />
+                      <span>Completed on {new Date(challenge.completed_at).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        year: 'numeric' 
+                      })}</span>
+                    </div>
+
+                    {/* Proof text */}
+                    {challenge.proof_text && (
+                      <div className="bg-muted/30 rounded-lg p-3 mb-3">
+                        <p className="text-sm text-muted-foreground line-clamp-3">
+                          "{challenge.proof_text}"
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Challenge description */}
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {challenge.challenges.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           )}
         </TabsContent>
 
