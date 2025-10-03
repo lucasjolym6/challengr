@@ -2,7 +2,6 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
-import { Home, Trophy, MessageCircle } from 'lucide-react';
 
 // Import custom icons
 import homeIcon from '/icons/home-03-Stroke-Rounded.png';
@@ -21,9 +20,9 @@ const GlassFabNav: React.FC<GlassFabNavProps> = ({
   const { triggerHaptic } = useHapticFeedback();
 
   const items = [
-    { id: "home", label: "Home", icon: <img src={homeIcon} alt="Home" className="h-6 w-6" />, href: "/" },
-    { id: "challenges", label: "Challenges", icon: <img src={awardIcon} alt="Challenges" className="h-6 w-6" />, href: "/challenges" },
-    { id: "community", label: "Community", icon: <img src={chatQuestionIcon} alt="Community" className="h-6 w-6" />, href: "/community" },
+    { id: "home", label: "Home", icon: <img src={homeIcon} alt="Home" className="h-5 w-5" />, href: "/" },
+    { id: "challenges", label: "Challenges", icon: <img src={awardIcon} alt="Challenges" className="h-5 w-5" />, href: "/challenges" },
+    { id: "community", label: "Community", icon: <img src={chatQuestionIcon} alt="Community" className="h-5 w-5" />, href: "/community" },
   ];
 
   const handleItemClick = (href: string) => {
@@ -32,21 +31,30 @@ const GlassFabNav: React.FC<GlassFabNavProps> = ({
   };
 
   const isActive = (href: string) => {
+    const currentPath = location.pathname;
+    
     // Exact match for home page
     if (href === '/') {
-      return location.pathname === '/';
+      return currentPath === '/' || currentPath === '';
     }
-    // For other pages, check if pathname starts with the href
-    return location.pathname.startsWith(href);
+    
+    // For other pages, check if current path starts with the href
+    // This handles sub-routes like /community/thread/123 → Community stays active
+    if (currentPath.startsWith(href)) {
+      // Additional check: ensure we don't match partial paths
+      // e.g., /challenge should not match /challenges
+      if (currentPath !== href) {
+        const nextChar = currentPath.charAt(href.length);
+        return nextChar === '/' || nextChar === '';
+      }
+      return true;
+    }
+    
+    return false;
   };
 
-  // Force re-render when location changes to maintain active state
+  // Get current path for debugging and key generation
   const currentPath = location.pathname;
-  
-  // Use currentPath as a dependency to ensure re-render on route change
-  React.useEffect(() => {
-    // This effect runs when currentPath changes, ensuring the component updates
-  }, [currentPath]);
 
   const containerClasses = position === 'bottom' 
     ? 'fixed safe-area-bottom left-1/2 -translate-x-1/2 z-50'
@@ -55,25 +63,28 @@ const GlassFabNav: React.FC<GlassFabNavProps> = ({
   return (
     <div className={containerClasses}>
       <div className="flex items-center gap-6 px-6 py-4 glass glass-transition rounded-3xl">
-        {items.map((item) => (
-          <Button
-            key={item.id}
-            onClick={() => handleItemClick(item.href)}
-            className={`
-              fab-size glass glass-transition
-              flex items-center justify-center
-              ${isActive(item.href) ? 'glass-active bg-orange-500/20 border-orange-400/40' : ''}
-              hover:scale-105 active:scale-95
-              focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
-            `}
-            aria-label={item.label}
-            title={item.label}
-          >
-            <div className={`${isActive(item.href) ? 'opacity-100 scale-110' : 'opacity-80'} transition-all duration-200`}>
-              {item.icon}
-            </div>
-          </Button>
-        ))}
+        {items.map((item) => {
+          const active = isActive(item.href);
+          return (
+            <Button
+              key={item.id}
+              onClick={() => handleItemClick(item.href)}
+              className={`
+                fab-size glass glass-transition
+                flex items-center justify-center
+                ${active ? 'bg-orange-500/20 border-orange-400/40' : ''}
+                hover:scale-105 active:scale-95
+                focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
+              `}
+              aria-label={item.label}
+              title={item.label}
+            >
+              <div className={`${active ? 'opacity-100' : 'opacity-80'} transition-opacity duration-200`}>
+                {item.icon}
+              </div>
+            </Button>
+          );
+        })}
       </div>
     </div>
   );
