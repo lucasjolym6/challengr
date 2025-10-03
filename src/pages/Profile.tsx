@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -30,7 +31,10 @@ import {
   CheckCircle,
   Clock,
   Zap,
-  Sparkles
+  Sparkles,
+  Shield,
+  Settings,
+  LogOut
 } from "lucide-react";
 
 interface Profile {
@@ -79,8 +83,9 @@ interface Friend {
 }
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [completedChallenges, setCompletedChallenges] = useState<CompletedChallenge[]>([]);
   const [badges, setBadges] = useState<Badge[]>([]);
@@ -558,6 +563,10 @@ export default function Profile() {
     }
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
   if (loading) {
     return (
       <div className="p-4 md:p-6 space-y-4 animate-pulse">
@@ -713,6 +722,49 @@ export default function Profile() {
             <div className="text-xl md:text-2xl font-bold">{friends.length}</div>
             <div className="text-xs text-muted-foreground">Friends</div>
           </div>
+        </div>
+
+        {/* Action Buttons - Previously in burger menu */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 py-4">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => navigate('/validation')}
+            className="flex items-center gap-2 h-10"
+          >
+            <Shield className="h-4 w-4" />
+            <span className="text-xs">Validation</span>
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => navigate('/pricing')}
+            className="flex items-center gap-2 h-10"
+          >
+            <Crown className="h-4 w-4" />
+            <span className="text-xs">Premium</span>
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => navigate('/settings')}
+            className="flex items-center gap-2 h-10"
+          >
+            <Settings className="h-4 w-4" />
+            <span className="text-xs">Settings</span>
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleSignOut}
+            className="flex items-center gap-2 h-10 text-destructive hover:text-destructive"
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="text-xs">Sign Out</span>
+          </Button>
         </div>
       </div>
 

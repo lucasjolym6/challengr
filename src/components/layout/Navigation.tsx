@@ -7,7 +7,6 @@ import {
   Trophy, 
   Users, 
   User,
-  Menu,
   LogOut,
   Zap,
   Shield,
@@ -15,13 +14,6 @@ import {
   Crown,
   MessageCircle
 } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 export const Navigation: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -37,45 +29,12 @@ export const Navigation: React.FC = () => {
 
   return (
     <>
-      {/* Mobile-first: Top bar with logo and menu */}
-      <header className="fixed top-0 left-0 right-0 h-14 bg-card/95 backdrop-blur-md border-b border-border z-50 flex items-center justify-between px-4 md:hidden">
+      {/* Mobile-first: Top bar with logo only */}
+      <header className="fixed top-0 left-0 right-0 h-14 bg-card/95 backdrop-blur-md border-b border-border z-50 flex items-center justify-center px-4 md:hidden">
         <Link to="/" className="flex items-center gap-2">
           <Zap className="h-6 w-6 text-primary" />
           <span className="text-lg font-bold gradient-text">Challengr</span>
         </Link>
-        
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-9 w-9">
-              <Menu className="h-5 w-5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48 bg-card">
-            <DropdownMenuItem asChild>
-              <Link to="/validation" className="flex items-center gap-2 cursor-pointer">
-                <Shield className="h-4 w-4" />
-                Validation Queue
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/pricing" className="flex items-center gap-2 cursor-pointer">
-                <Crown className="h-4 w-4" />
-                Premium
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/settings" className="flex items-center gap-2 cursor-pointer">
-                <Settings className="h-4 w-4" />
-                Settings
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-destructive">
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </header>
 
       {/* Mobile-first: Bottom navigation (5 main items) */}
