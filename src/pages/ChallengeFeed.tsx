@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -65,7 +65,17 @@ interface Comment {
 
 const ChallengeFeed: React.FC = () => {
   const { challengeId } = useParams<{ challengeId: string }>();
+  const [highlightCommentId, setHighlightCommentId] = useState<string | null>(null);
   const navigate = useNavigate();
+  
+  // Get highlight comment ID from URL search params
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const highlightId = urlParams.get('highlight');
+    if (highlightId) {
+      setHighlightCommentId(highlightId);
+    }
+  }, []);
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -398,6 +408,55 @@ const ChallengeFeed: React.FC = () => {
     loadData();
   }, [challengeId]);
 
+  // Auto-scroll to highlighted comment
+  useEffect(() => {
+    if (highlightCommentId && comments.length > 0) {
+      const timer = setTimeout(() => {
+        let targetId = highlightCommentId;
+        
+        // If highlight is "latest", use the first comment (most recent)
+        if (highlightCommentId === 'latest' && comments.length > 0) {
+          targetId = comments[0].id;
+          setHighlightCommentId(targetId);
+        }
+        
+        // Try to find the element by ID first
+        let highlightedElement = document.getElementById(`comment-${targetId}`);
+        
+        // If not found, try to find by post ID or comment ID in the replies
+        if (!highlightedElement) {
+          // Look for the comment in the replies
+          const foundComment = comments.find(comment => 
+            comment.id === targetId || 
+            comment.replies?.some(reply => reply.id === targetId)
+          );
+          
+          if (foundComment) {
+            targetId = foundComment.id;
+            highlightedElement = document.getElementById(`comment-${targetId}`);
+          }
+        }
+        
+        if (highlightedElement) {
+          highlightedElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+          });
+          
+          // Remove highlight after 3 seconds
+          setTimeout(() => {
+            setHighlightCommentId(null);
+          }, 3000);
+        } else {
+          console.log('Could not find element with ID:', `comment-${targetId}`);
+          console.log('Available comment IDs:', comments.map(c => c.id));
+          console.log('HighlightCommentId:', highlightCommentId);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightCommentId, comments]);
+
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -480,7 +539,14 @@ const ChallengeFeed: React.FC = () => {
         <div className="px-4 py-3">
           <Button
             variant="ghost"
-            onClick={() => navigate('/challenges')}
+            onClick={() => {
+              // If we came from a specific card, return to community with that card info
+              if (highlightCommentId) {
+                navigate('/community');
+              } else {
+                navigate('/challenges');
+              }
+            }}
             className="text-gray-600 hover:text-gray-900 p-2 -ml-2"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
@@ -610,9 +676,14 @@ const ChallengeFeed: React.FC = () => {
               comments.map((comment) => (
                 <Card
                   key={comment.id}
-                  className={`shadow-lg transition-all rounded-3xl ${
+                  id={`comment-${comment.id}`}
+                  className={`shadow-lg transition-all duration-500 rounded-3xl ${
                     comment.verified
                       ? 'ring-2 ring-green-200 bg-gradient-to-r from-green-50 to-emerald-50'
+                      : ''
+                  } ${
+                    highlightCommentId === comment.id
+                      ? 'ring-2 ring-yellow-300 bg-gradient-to-r from-yellow-50/90 to-amber-50/90 shadow-lg shadow-yellow-200/40'
                       : ''
                   }`}
                 >

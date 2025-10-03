@@ -11,16 +11,17 @@ export interface ChallengeInteraction {
   challenge_image: string | null;
   category_name: string;
   category_color: string | null;
-  interaction_type: 'comment' | 'join' | 'complete' | 'milestone';
+  interaction_type: 'completion' | 'join' | 'complete' | 'milestone';
   participants_count: number;
   likes_count: number;
   comments_count: number;
   // Interaction-specific data
-  comment?: {
+  completion?: {
     content: string;
     user_name: string;
     user_avatar: string | null;
     created_at: string;
+    verified: boolean;
   };
   participant?: {
     user_name: string;
@@ -64,9 +65,9 @@ const InteractionCard: React.FC<InteractionCardProps> = ({ interaction, onClick 
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-orange-400 via-pink-400 to-purple-400" />
+          <div className="w-full h-full bg-gradient-to-br from-blue-300 via-purple-300 to-pink-300" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/70 to-black/80" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/40 to-black/60" />
       </div>
 
       {/* Content */}
@@ -105,26 +106,33 @@ const InteractionCard: React.FC<InteractionCardProps> = ({ interaction, onClick 
 
         {/* Center Highlight - Featured Interaction */}
         <div className="flex-1 flex items-center justify-center py-6">
-          <div className="bg-white/20 backdrop-blur-xl border-2 border-white/40 rounded-3xl p-6 shadow-2xl max-w-full">
-            {/* Comment */}
-            {interaction.interaction_type === 'comment' && interaction.comment && (
+          <div className="bg-white/15 backdrop-blur-2xl border border-white/30 rounded-3xl p-5 shadow-xl max-w-full hover:bg-white/20 transition-all duration-300">
+            {/* Completion Post */}
+            {interaction.interaction_type === 'completion' && interaction.completion && (
               <div className="relative">
-                <div className="absolute -left-4 top-4 w-0 h-0 border-t-[10px] border-r-[12px] border-b-[10px] border-transparent border-r-white/25" />
-                <div className="bg-white/15 rounded-2xl p-4 backdrop-blur-sm">
-                  <p className="text-white font-medium text-base italic line-clamp-3 break-words mb-3">
-                    💬 "{interaction.comment.content}"
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Avatar className="w-8 h-8 border-2 border-white/70">
-                      <AvatarImage src={interaction.comment.user_avatar || undefined} />
-                      <AvatarFallback className="bg-gradient-to-br from-purple-400 to-pink-400 text-white text-xs">
-                        {interaction.comment.user_name.charAt(0).toUpperCase()}
+                <div className="bg-white/20 rounded-3xl p-5 backdrop-blur-lg border border-white/30">
+                  <div className="flex items-start gap-3 mb-4">
+                    <Avatar className="w-10 h-10 border-2 border-white/80 shadow-lg">
+                      <AvatarImage src={interaction.completion.user_avatar || undefined} />
+                      <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-400 text-white text-sm font-semibold">
+                        {interaction.completion.user_name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <p className="text-white/90 text-sm font-semibold">{interaction.comment.user_name}</p>
-                      <p className="text-white/70 text-xs">{formatTimeAgo(interaction.comment.created_at)}</p>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-white font-bold text-sm">{interaction.completion.user_name}</p>
+                        <Sparkles className="w-4 h-4 text-yellow-300" />
+                      </div>
+                      <p className="text-white/70 text-xs">{formatTimeAgo(interaction.completion.created_at)}</p>
                     </div>
+                  </div>
+                  <p className="text-white font-medium text-base leading-relaxed line-clamp-3 break-words">
+                    {interaction.completion.content}
+                  </p>
+                  <div className="mt-4 pt-3 border-t border-white/20">
+                    <p className="text-white/80 text-sm font-medium">
+                      💬 Voir les réactions
+                    </p>
                   </div>
                 </div>
               </div>
