@@ -21,8 +21,10 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { UserLevelBadge } from '@/components/ui/user-level-badge';
+import { LevelProgress } from '@/components/ui/level-progress';
 import { DifficultyCircle } from '@/components/ui/difficulty-circle';
 import { CommunityActivity } from '@/components/home/CommunityActivity';
+import { getLevelInfo } from '@/lib/levelSystem';
 
 // Import category images
 import sportsImg from "@/assets/category-sports.jpg";
@@ -188,17 +190,6 @@ export default function Home() {
     return categoryImages[categoryName] || sportsImg;
   };
 
-  const getNextLevelPoints = (currentLevel: number): number => {
-    // Simple progression: each level requires 100 more points
-    return currentLevel * 100;
-  };
-
-  const getCurrentLevelProgress = (points: number, level: number): number => {
-    const currentLevelStart = (level - 1) * 100;
-    const currentLevelPoints = points - currentLevelStart;
-    const currentLevelTotal = level * 100 - currentLevelStart;
-    return Math.min((currentLevelPoints / currentLevelTotal) * 100, 100);
-  };
 
   if (loading) {
     return (
@@ -213,69 +204,59 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Section 1: User Status (Gamified Header) */}
+      {/* Section 1: User Status (Mobile-Optimized Header) */}
       <div className="relative bg-gradient-to-br from-primary/10 via-background to-accent/10 border-b border-border/40">
-        <div className="container mx-auto px-4 md:px-6 py-8 md:py-12">
-          <div className="space-y-6">
-            {/* User Profile Header */}
-            <div className="flex items-center gap-4">
-              <Avatar className="h-20 w-20 border-4 border-primary/20">
+        <div className="px-4 py-6 md:px-6 md:py-8">
+          <div className="space-y-4">
+            {/* User Profile Header - Mobile Optimized */}
+            <div className="flex items-start gap-3">
+              <Avatar className="h-16 w-16 border-3 border-primary/20 flex-shrink-0">
                 <AvatarImage src={profile?.avatar_url || undefined} />
-                <AvatarFallback className="text-2xl font-bold bg-primary/10">
+                <AvatarFallback className="text-lg font-bold bg-primary/10">
                   {profile?.display_name?.charAt(0) || profile?.username?.charAt(0) || 'U'}
                 </AvatarFallback>
               </Avatar>
               
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-2xl md:text-3xl font-bold">
+              <div className="flex-1 min-w-0">
+                {/* Name and Level Badge */}
+                <div className="flex items-center gap-2 mb-2">
+                  <h1 className="text-xl font-bold truncate">
                     {profile?.display_name || profile?.username || 'User'}
                   </h1>
-                  <UserLevelBadge level={profile?.level || 1} size="md" />
+                  <UserLevelBadge totalPoints={profile?.total_points || 0} size="sm" />
                 </div>
                 
-                {/* Level Progress */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Level {profile?.level || 1} Progress</span>
-                    <span className="font-semibold">
-                      {profile?.total_points || 0} / {getNextLevelPoints(profile?.level || 1)} pts
-                    </span>
-                  </div>
-                  <Progress 
-                    value={getCurrentLevelProgress(profile?.total_points || 0, profile?.level || 1)} 
-                    className="h-3"
-                  />
-                </div>
+                {/* Level Progress - Compact */}
+                <LevelProgress totalPoints={profile?.total_points || 0} size="sm" showDetails={false} />
               </div>
             </div>
 
-            {/* Personal KPIs */}
-            <div className="grid grid-cols-3 gap-4 max-w-2xl">
-              <div className="text-center p-4 rounded-xl bg-background/60 backdrop-blur-sm border border-border/40 hover:border-primary/50 transition-colors">
-                <div className="text-2xl md:text-3xl font-bold text-primary mb-1">
+            {/* Personal KPIs - Mobile Grid */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="text-center p-3 rounded-lg bg-background/70 backdrop-blur-sm border border-border/40">
+                <div className="text-xl font-bold text-primary mb-1">
                   {profile?.total_points || 0}
                 </div>
-                <div className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
-                  Total Points
+                <div className="text-xs text-muted-foreground font-medium">
+                  Points
                 </div>
               </div>
               
-              <div className="text-center p-4 rounded-xl bg-background/60 backdrop-blur-sm border border-border/40 hover:border-primary/50 transition-colors">
-                <div className="text-2xl md:text-3xl font-bold text-foreground mb-1">
+              <div className="text-center p-3 rounded-lg bg-background/70 backdrop-blur-sm border border-border/40">
+                <div className="text-xl font-bold text-foreground mb-1">
                   {activeChallenges.length}
                 </div>
-                <div className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
-                  Active Challenges
+                <div className="text-xs text-muted-foreground font-medium">
+                  Actifs
                 </div>
               </div>
               
-              <div className="text-center p-4 rounded-xl bg-background/60 backdrop-blur-sm border border-border/40 hover:border-primary/50 transition-colors">
-                <div className="text-2xl md:text-3xl font-bold text-foreground mb-1">
+              <div className="text-center p-3 rounded-lg bg-background/70 backdrop-blur-sm border border-border/40">
+                <div className="text-xl font-bold text-foreground mb-1">
                   {profile?.level || 1}
                 </div>
-                <div className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
-                  Current Level
+                <div className="text-xs text-muted-foreground font-medium">
+                  Niveau
                 </div>
               </div>
             </div>
