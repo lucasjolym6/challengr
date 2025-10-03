@@ -437,7 +437,8 @@ const Challenges = () => {
 
     return (
       <Card 
-        key={challenge.id} 
+        key={challenge.id}
+        id={`challenge-${challenge.id}`}
         className="group hover:shadow-lg transition-all duration-200 overflow-hidden cursor-pointer border-border/40"
         onClick={() => openChallengeDetail(challenge)}
       >

@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { SearchBar } from './SearchBar';
 import { 
   Home, 
   Trophy, 
@@ -14,10 +16,37 @@ import {
   Crown,
   MessageCircle
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Profile {
+  user_id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
 
 export const Navigation: React.FC = () => {
   const { user, signOut } = useAuth();
   const location = useLocation();
+  const [profile, setProfile] = useState<Profile | null>(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, username, display_name, avatar_url')
+        .eq('user_id', user.id)
+        .single();
+
+      if (data && !error) {
+        setProfile(data);
+      }
+    };
+
+    fetchProfile();
+  }, [user]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -37,42 +66,31 @@ export const Navigation: React.FC = () => {
         </Link>
       </header>
 
-      {/* Mobile-first: Bottom navigation (5 main items) */}
+      {/* Mobile-first: Bottom navigation - LinkedIn style */}
       <nav className="fixed bottom-0 left-0 right-0 h-16 bg-card/95 backdrop-blur-md border-t border-border z-50 md:hidden">
-        <div className="flex justify-around items-center h-full px-1">
-          <Link to="/" className="flex flex-col items-center justify-center flex-1 py-2">
-            <Home className={`h-6 w-6 mb-1 ${isActive('/') ? 'text-primary' : 'text-muted-foreground'}`} />
-            <span className={`text-xs ${isActive('/') ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
-              Home
-            </span>
+        <div className="flex items-center h-full px-4">
+          {/* Profile Avatar - Left */}
+          <Link to="/profile" className="flex-shrink-0">
+            <Avatar className="h-10 w-10 border-2 border-transparent hover:border-primary/50 transition-colors">
+              <AvatarImage src={profile?.avatar_url || undefined} />
+              <AvatarFallback className="text-sm font-medium">
+                {profile?.display_name?.charAt(0) || profile?.username?.charAt(0) || 'U'}
+              </AvatarFallback>
+            </Avatar>
           </Link>
 
-          <Link to="/challenges" className="flex flex-col items-center justify-center flex-1 py-2">
-            <Trophy className={`h-6 w-6 mb-1 ${isActive('/challenges') ? 'text-primary' : 'text-muted-foreground'}`} />
-            <span className={`text-xs ${isActive('/challenges') ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
-              Challenges
-            </span>
-          </Link>
+          {/* Search Bar - Center */}
+          <SearchBar />
 
-          <Link to="/community" className="flex flex-col items-center justify-center flex-1 py-2">
-            <Users className={`h-6 w-6 mb-1 ${isActive('/community') ? 'text-primary' : 'text-muted-foreground'}`} />
-            <span className={`text-xs ${isActive('/community') ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
-              Community
-            </span>
-          </Link>
-
-          <Link to="/messages" className="flex flex-col items-center justify-center flex-1 py-2">
-            <MessageCircle className={`h-6 w-6 mb-1 ${isActive('/messages') ? 'text-primary' : 'text-muted-foreground'}`} />
-            <span className={`text-xs ${isActive('/messages') ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
-              Messages
-            </span>
-          </Link>
-
-          <Link to="/profile" className="flex flex-col items-center justify-center flex-1 py-2">
-            <User className={`h-6 w-6 mb-1 ${isActive('/profile') ? 'text-primary' : 'text-muted-foreground'}`} />
-            <span className={`text-xs ${isActive('/profile') ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
-              Profile
-            </span>
+          {/* Messages Button - Right */}
+          <Link to="/messages" className="flex-shrink-0 ml-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`h-10 w-10 ${isActive('/messages') ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              <MessageCircle className="h-5 w-5" />
+            </Button>
           </Link>
         </div>
       </nav>
