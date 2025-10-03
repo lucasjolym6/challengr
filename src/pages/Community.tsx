@@ -1,10 +1,12 @@
 import React from 'react';
-import ChallengeFeed from "@/components/challenges/ChallengeFeed";
+import CommunityFeed from "@/components/community/CommunityFeed";
 
 const Community = () => {
   return (
-    <div className="fixed inset-0 top-16 overflow-hidden bg-gradient-to-b from-[#FFF7F2] via-white to-[#FFF2EC]">
-      <ChallengeFeed />
+    <div className="min-h-screen bg-gradient-to-b from-[#FFF7F2] via-white to-[#FFF2EC]">
+      <div className="pt-20 pb-6">
+        <CommunityFeed />
+      </div>
     </div>
   );
 };
