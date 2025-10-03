@@ -31,6 +31,33 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     if (!user) return;
 
     try {
+      // First check if conversation tables exist
+      const { data: tableCheck, error: tableError } = await supabase
+        .from('conversation_members')
+        .select('*')
+        .limit(1);
+
+      if (tableError && tableError.code === 'PGRST205') {
+        // Tables don't exist, use fallback with old messages table
+        console.log('NotificationContext: Using fallback - conversation tables do not exist');
+        
+        // Check for unread messages using old system
+        const { data: unreadMessages, error: messagesError } = await supabase
+          .from('messages')
+          .select('id, read_at')
+          .eq('receiver_id', user.id)
+          .is('read_at', null)
+          .limit(1);
+
+        if (messagesError) {
+          console.error('Error checking fallback messages:', messagesError);
+          return;
+        }
+
+        setHasNewMessages(unreadMessages && unreadMessages.length > 0);
+        return;
+      }
+
       // Query for conversations where user has unread messages
       const { data: conversations, error } = await supabase
         .from('conversation_members')
