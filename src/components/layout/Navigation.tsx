@@ -58,39 +58,59 @@ export const Navigation: React.FC = () => {
 
   return (
     <>
-      {/* Mobile-first: Top bar with logo only */}
-      <header className="fixed top-0 left-0 right-0 h-14 bg-card/95 backdrop-blur-md border-b border-border z-50 flex items-center justify-center px-4 md:hidden">
-        <Link to="/" className="flex items-center gap-2">
-          <Zap className="h-6 w-6 text-primary" />
-          <span className="text-lg font-bold gradient-text">Challengr</span>
-        </Link>
-      </header>
-
-      {/* Mobile-first: Bottom navigation - LinkedIn style */}
-      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-card/95 backdrop-blur-md border-t border-border z-50 md:hidden">
-        <div className="flex items-center h-full px-4">
+      {/* Mobile-first: Top bar - LinkedIn style */}
+      <header className="fixed top-0 left-0 right-0 h-14 bg-card/95 backdrop-blur-md border-b border-border z-50 flex items-center px-4 md:hidden">
+        <div className="flex items-center w-full">
           {/* Profile Avatar - Left */}
           <Link to="/profile" className="flex-shrink-0">
-            <Avatar className="h-10 w-10 border-2 border-transparent hover:border-primary/50 transition-colors">
+            <Avatar className="h-8 w-8 border-2 border-transparent hover:border-primary/50 transition-colors">
               <AvatarImage src={profile?.avatar_url || undefined} />
-              <AvatarFallback className="text-sm font-medium">
+              <AvatarFallback className="text-xs font-medium">
                 {profile?.display_name?.charAt(0) || profile?.username?.charAt(0) || 'U'}
               </AvatarFallback>
             </Avatar>
           </Link>
 
           {/* Search Bar - Center */}
-          <SearchBar />
+          <div className="flex-1 mx-3">
+            <SearchBar />
+          </div>
 
           {/* Messages Button - Right */}
-          <Link to="/messages" className="flex-shrink-0 ml-2">
+          <Link to="/messages" className="flex-shrink-0">
             <Button
               variant="ghost"
               size="icon"
-              className={`h-10 w-10 ${isActive('/messages') ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+              className={`h-8 w-8 ${isActive('/messages') ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
             >
-              <MessageCircle className="h-5 w-5" />
+              <MessageCircle className="h-4 w-4" />
             </Button>
+          </Link>
+        </div>
+      </header>
+
+      {/* Mobile-first: Bottom navigation (3 main items) */}
+      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-card/95 backdrop-blur-md border-t border-border z-50 md:hidden">
+        <div className="flex justify-around items-center h-full px-1">
+          <Link to="/" className="flex flex-col items-center justify-center flex-1 py-2">
+            <Home className={`h-6 w-6 mb-1 ${isActive('/') ? 'text-primary' : 'text-muted-foreground'}`} />
+            <span className={`text-xs ${isActive('/') ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
+              Home
+            </span>
+          </Link>
+
+          <Link to="/challenges" className="flex flex-col items-center justify-center flex-1 py-2">
+            <Trophy className={`h-6 w-6 mb-1 ${isActive('/challenges') ? 'text-primary' : 'text-muted-foreground'}`} />
+            <span className={`text-xs ${isActive('/challenges') ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
+              Challenges
+            </span>
+          </Link>
+
+          <Link to="/community" className="flex flex-col items-center justify-center flex-1 py-2">
+            <Users className={`h-6 w-6 mb-1 ${isActive('/community') ? 'text-primary' : 'text-muted-foreground'}`} />
+            <span className={`text-xs ${isActive('/community') ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
+              Community
+            </span>
           </Link>
         </div>
       </nav>

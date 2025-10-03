@@ -104,10 +104,10 @@ export const SearchBar: React.FC = () => {
   };
 
   return (
-    <div ref={searchRef} className="relative flex-1 max-w-md mx-4">
+    <div ref={searchRef} className="relative w-full">
       <form onSubmit={handleSearchSubmit}>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-muted-foreground" />
           <Input
             type="text"
             placeholder="Search challenges..."
@@ -117,7 +117,7 @@ export const SearchBar: React.FC = () => {
               setIsOpen(true);
             }}
             onFocus={() => setIsOpen(true)}
-            className="pl-10 h-10 bg-muted/50 border-muted-foreground/20 focus:bg-background focus:border-primary/50 transition-colors"
+            className="pl-7 h-8 text-sm bg-muted/50 border-muted-foreground/20 focus:bg-background focus:border-primary/50 transition-colors"
           />
         </div>
       </form>
