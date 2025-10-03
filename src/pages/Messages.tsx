@@ -9,10 +9,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { MessageCircle, Send, Share2, Search, Users as UsersIcon, ArrowLeft } from "lucide-react";
+import { MessageCircle, Send, Share2, Search, Users as UsersIcon, ArrowLeft, Plus } from "lucide-react";
 import { SharedChallengeCard } from "@/components/messages/SharedChallengeCard";
 import { format } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 interface Friend {
   id: string;
@@ -24,6 +26,18 @@ interface Friend {
     display_name: string;
     avatar_url: string;
   };
+}
+
+interface ConversationPreview {
+  friend: Friend;
+  lastMessage: {
+    content: string;
+    sender_id: string;
+    created_at: string;
+    read_at: string | null;
+    challenge_id: string | null;
+  } | null;
+  unreadCount: number;
 }
 
 interface Message {
@@ -61,11 +75,18 @@ export default function Messages() {
   const { user } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { markMessagesAsRead } = useNotifications();
   const [friends, setFriends] = useState<Friend[]>([]);
+  const [conversations, setConversations] = useState<ConversationPreview[]>([]);
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [showFriendSearch, setShowFriendSearch] = useState(false);
+  const [friendSearchQuery, setFriendSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Friend[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showChat, setShowChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -76,6 +97,42 @@ export default function Messages() {
       fetchChallenges();
     }
   }, [user]);
+
+  // Mark messages as read when user visits messages page
+  useEffect(() => {
+    markMessagesAsRead();
+  }, [markMessagesAsRead]);
+
+  // Search friends when query changes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (friendSearchQuery.trim()) {
+        searchFriends(friendSearchQuery);
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [friendSearchQuery]);
+
+  // Check if we're in a conversation based on URL params
+  const friendId = searchParams.get('friend_id');
+  const isInConversation = Boolean(friendId);
+
+  // Set selected friend when friend_id is in URL
+  useEffect(() => {
+    if (friendId && friends.length > 0) {
+      const friend = friends.find(f => f.friend_id === friendId);
+      if (friend) {
+        setSelectedFriend(friend);
+        setShowChat(true);
+      }
+    } else if (!friendId) {
+      setSelectedFriend(null);
+      setShowChat(false);
+    }
+  }, [friendId, friends]);
 
   useEffect(() => {
     if (selectedFriend && user) {
@@ -119,53 +176,257 @@ export default function Messages() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const fetchFriends = async () => {
+  const fetchConversations = async () => {
     if (!user) return;
 
-    // Fetch friends where current user is user_id
-    const { data: friendsAsUser } = await supabase
-      .from('user_friends')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('status', 'accepted');
+    try {
+      // Fetch friends where current user is user_id
+      const { data: friendsAsUser } = await supabase
+        .from('user_friends')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'accepted');
 
-    // Fetch friends where current user is friend_id
-    const { data: friendsAsFriend } = await supabase
-      .from('user_friends')
-      .select('*')
-      .eq('friend_id', user.id)
-      .eq('status', 'accepted');
+      // Fetch friends where current user is friend_id
+      const { data: friendsAsFriend } = await supabase
+        .from('user_friends')
+        .select('*')
+        .eq('friend_id', user.id)
+        .eq('status', 'accepted');
 
-    const allFriendships = [...(friendsAsUser || []), ...(friendsAsFriend || [])];
+      const allFriendships = [...(friendsAsUser || []), ...(friendsAsFriend || [])];
 
-    if (allFriendships.length > 0) {
-      // Extract friend IDs from both directions
-      const friendIds = allFriendships.map(f => 
-        f.user_id === user.id ? f.friend_id : f.user_id
-      );
+      if (allFriendships.length > 0) {
+        // Extract friend IDs from both directions
+        const friendIds = allFriendships.map(f => 
+          f.user_id === user.id ? f.friend_id : f.user_id
+        );
 
-      const { data: profilesData } = await supabase
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('user_id, username, display_name, avatar_url')
+          .in('user_id', friendIds);
+
+        const friendsWithProfiles = allFriendships.map(friend => {
+          const friendUserId = friend.user_id === user.id ? friend.friend_id : friend.user_id;
+          const profile = profilesData?.find(p => p.user_id === friendUserId);
+          return {
+            ...friend,
+            profiles: profile || {
+              user_id: friendUserId,
+              username: 'Unknown',
+              display_name: 'Unknown User',
+              avatar_url: ''
+            }
+          };
+        });
+
+        setFriends(friendsWithProfiles as Friend[]);
+
+        // Now get conversation previews for each friend - only those with messages
+        const conversationsWithPreview = await Promise.all(
+          friendsWithProfiles.map(async (friend) => {
+            const friendUserId = friend.user_id === user.id ? friend.friend_id : friend.user_id;
+            
+            // Get last message between user and friend
+            const { data: lastMessage, error: messageError } = await supabase
+              .from('messages')
+              .select('content, sender_id, created_at, read_at, challenge_id')
+              .or(`and(sender_id.eq.${user.id},receiver_id.eq.${friendUserId}),and(sender_id.eq.${friendUserId},receiver_id.eq.${user.id})`)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
+
+            // Only return conversations that have messages
+            if (!lastMessage) {
+              return null;
+            }
+
+            // Get unread count (messages received by user from this friend)
+            const { data: unreadMessages } = await supabase
+              .from('messages')
+              .select('id')
+              .eq('sender_id', friendUserId)
+              .eq('receiver_id', user.id)
+              .is('read_at', null);
+
+            const unreadCount = unreadMessages?.length || 0;
+
+            return {
+              friend,
+              lastMessage: lastMessage,
+              unreadCount,
+            };
+          })
+        );
+
+        // Filter out null conversations (friends without messages)
+        const validConversations = conversationsWithPreview.filter(conv => conv !== null);
+
+        // Sort conversations by last message date (most recent first)
+        validConversations.sort((a, b) => {
+          return new Date(b.lastMessage.created_at).getTime() - new Date(a.lastMessage.created_at).getTime();
+        });
+
+        setConversations(validConversations);
+      } else {
+        setFriends([]);
+        setConversations([]);
+      }
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les conversations",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchFriends = async () => {
+    // This function now calls fetchConversations
+    fetchConversations();
+  };
+
+  // Function to search for friends to start new conversations
+  const searchFriends = async (query: string) => {
+    if (!user || query.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      const { data: profiles, error } = await supabase
         .from('profiles')
         .select('user_id, username, display_name, avatar_url')
-        .in('user_id', friendIds);
+        .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+        .neq('user_id', user.id) // Exclude current user
+        .limit(10);
 
-      const friendsWithProfiles = allFriendships.map(friend => {
-        const friendUserId = friend.user_id === user.id ? friend.friend_id : friend.user_id;
-        const profile = profilesData?.find(p => p.user_id === friendUserId);
-        return {
-          ...friend,
-          profiles: profile || {
-            user_id: friendUserId,
-            username: 'Unknown',
-            display_name: 'Unknown User',
-            avatar_url: ''
-          }
-        };
+      if (error) {
+        console.error('Error searching friends:', error);
+        return;
+      }
+
+      // Filter out users who are already friends
+      const existingFriendIds = friends.map(f => {
+        return f.user_id === user.id ? f.friend_id : f.user_id;
       });
 
-      setFriends(friendsWithProfiles as Friend[]);
+      const availableFriends = profiles?.filter(profile => 
+        !existingFriendIds.includes(profile.user_id)
+      ) || [];
+
+      setSearchResults(availableFriends.map(profile => ({
+        id: `search-${profile.user_id}`,
+        user_id: user.id,
+        friend_id: profile.user_id,
+        profiles: profile
+      })));
+    } catch (error) {
+      console.error('Error in searchFriends:', error);
+    }
+  };
+
+  // Function to start a new conversation
+  const startNewConversation = async (friendId: string) => {
+    if (!user) return;
+
+    try {
+      // Check if friendship already exists
+      const { data: existingFriendship } = await supabase
+        .from('user_friends')
+        .select('*')
+        .or(`and(user_id.eq.${user.id},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${user.id})`)
+        .single();
+
+      if (!existingFriendship) {
+        // Create friendship
+        const { error: friendshipError } = await supabase
+          .from('user_friends')
+          .insert({
+            user_id: user.id,
+            friend_id: friendId,
+            status: 'accepted'
+          });
+
+        if (friendshipError) {
+          console.error('Error creating friendship:', friendshipError);
+          toast({
+            title: "Erreur",
+            description: "Impossible de créer la conversation",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      // Navigate to conversation
+      setSearchParams({ friend_id: friendId });
+      setShowFriendSearch(false);
+      setFriendSearchQuery('');
+      setSearchResults([]);
+      
+      // Refresh conversations
+      fetchConversations();
+
+      toast({
+        title: "Conversation créée",
+        description: "Vous pouvez maintenant commencer à échanger",
+      });
+    } catch (error) {
+      console.error('Error starting conversation:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer la conversation",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Function to generate preview text based on message state
+  const getMessagePreview = (conversation: ConversationPreview) => {
+    if (!conversation.lastMessage) {
+      return "Aucun message";
+    }
+
+    const { lastMessage } = conversation;
+    const isSentByUser = lastMessage.sender_id === user?.id;
+    const isUnread = lastMessage.read_at === null && !isSentByUser;
+
+    // Handle challenge sharing
+    if (lastMessage.challenge_id) {
+      const prefix = isSentByUser ? "Vous avez partagé un challenge" : "a partagé un challenge";
+      return prefix;
+    }
+
+    // Handle text messages
+    let preview = lastMessage.content;
+    
+    if (isSentByUser) {
+      // Message sent by user (no response yet)
+      preview = `Envoyé: ${preview}`;
+    }
+
+    return preview;
+  };
+
+  // Function to get preview text style
+  const getPreviewStyle = (conversation: ConversationPreview) => {
+    if (!conversation.lastMessage) {
+      return "text-gray-500 text-sm";
+    }
+
+    const { lastMessage } = conversation;
+    const isSentByUser = lastMessage.sender_id === user?.id;
+    const isUnread = lastMessage.read_at === null && !isSentByUser;
+
+    if (isUnread) {
+      return "text-gray-900 text-sm font-semibold"; // Bold for unread received messages
+    } else if (isSentByUser) {
+      return "text-gray-600 text-sm"; // Normal for sent messages
     } else {
-      setFriends([]);
+      return "text-gray-700 text-sm"; // Normal for read received messages
     }
   };
 
@@ -259,6 +520,8 @@ export default function Messages() {
 
     setNewMessage('');
     fetchMessages();
+    // Refresh conversations to update previews
+    fetchConversations();
 
     if (challengeId) {
       toast({
@@ -290,49 +553,89 @@ export default function Messages() {
   const showChatArea = !isMobile || showChat;
 
   return (
-    <div className="h-[calc(100vh-8rem)] md:h-screen md:pt-0 flex md:gap-0">
+    <div className="h-screen bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50 flex">
       {/* Friends List - Full screen on mobile, sidebar on desktop */}
       {showFriendsList && (
-        <div className={`${isMobile ? 'w-full' : 'w-80 border-r'} flex flex-col bg-card`}>
-          <div className="border-b px-4 py-4">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <MessageCircle className="h-5 w-5" />
-              Messages
-            </h2>
+        <div className={`${isMobile ? 'w-full' : 'w-80'} flex flex-col h-screen`}>
+          {/* Header with Liquid Glass effect */}
+          <div className="bg-white/60 backdrop-blur-xl border-b border-white/20 px-4 py-4 rounded-t-2xl m-2 mb-0 shadow-lg">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-gray-800">
+                <MessageCircle className="h-5 w-5 text-orange-600" />
+                Messages
+              </h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="bg-white/30 backdrop-blur-sm border border-white/20 hover:bg-white/50 text-gray-700"
+                onClick={() => setShowFriendSearch(true)}
+                title="Nouvelle conversation"
+              >
+                <Plus className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
           
-          <ScrollArea className="flex-1">
-            {friends.length === 0 ? (
+          <ScrollArea className="flex-1 bg-white/40 backdrop-blur-xl m-2 mt-0 rounded-b-2xl shadow-lg border border-white/20">
+            {conversations.length === 0 ? (
               <div className="text-center py-12 px-4 space-y-3">
-                <UsersIcon className="h-16 w-16 mx-auto text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  Add friends to start chatting and share challenges!
+                <MessageCircle className="h-16 w-16 mx-auto text-orange-400" />
+                <p className="text-sm text-gray-600">
+                  Aucune conversation
+                </p>
+                <p className="text-xs text-gray-500">
+                  Cliquez sur + pour commencer une nouvelle discussion
                 </p>
               </div>
             ) : (
-              <div className="p-2">
-                {friends.map((friend) => (
-                  <Button
-                    key={friend.id}
-                    variant="ghost"
-                    className="w-full justify-start gap-3 h-auto py-4 mb-1"
-                    onClick={() => {
-                      setSelectedFriend(friend);
-                      if (isMobile) setShowChat(true);
-                    }}
-                  >
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={friend.profiles.avatar_url} />
-                      <AvatarFallback>
-                        {friend.profiles.display_name?.charAt(0) || friend.profiles.username?.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 text-left">
-                      <p className="font-semibold">{friend.profiles.display_name || friend.profiles.username}</p>
-                      <p className="text-xs text-muted-foreground">@{friend.profiles.username}</p>
-                    </div>
-                  </Button>
-                ))}
+              <div className="p-3 space-y-2">
+                {conversations.map((conversation) => {
+                  const friend = conversation.friend;
+                  const friendUserId = friend.user_id === user?.id ? friend.friend_id : friend.user_id;
+                  
+                  return (
+                    <Button
+                      key={friend.id}
+                      variant="ghost"
+                      className="w-full justify-start gap-3 h-auto py-4 mb-1 rounded-xl bg-white/30 backdrop-blur-sm border border-gray-200/50 hover:bg-white/50 hover:shadow-md hover:border-gray-300/60 transition-all duration-200 relative"
+                      onClick={() => {
+                        setSearchParams({ friend_id: friendUserId });
+                        setSelectedFriend(friend);
+                        if (isMobile) setShowChat(true);
+                      }}
+                    >
+                      <Avatar className="h-12 w-12 border-2 border-white/30">
+                        <AvatarImage src={friend.profiles.avatar_url} />
+                        <AvatarFallback className="bg-gradient-to-br from-orange-400 to-pink-400 text-white">
+                          {friend.profiles.display_name?.charAt(0) || friend.profiles.username?.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 text-left min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="font-semibold text-gray-800 truncate">
+                            @{friend.profiles.username}
+                          </p>
+                          {conversation.lastMessage && (
+                            <p className="text-xs text-gray-400 ml-2 flex-shrink-0">
+                              {format(new Date(conversation.lastMessage.created_at), 'HH:mm')}
+                            </p>
+                          )}
+                        </div>
+                        <p className={`truncate ${getPreviewStyle(conversation)}`}>
+                          {getMessagePreview(conversation)}
+                        </p>
+                      </div>
+                      {/* Unread indicator */}
+                      {conversation.unreadCount > 0 && (
+                        <div className="absolute top-3 right-3 h-5 w-5 bg-red-500 rounded-full flex items-center justify-center">
+                          <span className="text-xs text-white font-semibold">
+                            {conversation.unreadCount > 9 ? '9+' : conversation.unreadCount}
+                          </span>
+                        </div>
+                      )}
+                    </Button>
+                  );
+                })}
               </div>
             )}
           </ScrollArea>
@@ -341,17 +644,19 @@ export default function Messages() {
 
       {/* Chat Area - Full screen on mobile when active, main area on desktop */}
       {showChatArea && (
-        <div className="flex-1 flex flex-col bg-card">
+        <div className="flex-1 flex flex-col h-screen">
           {selectedFriend ? (
             <>
-              {/* Chat Header */}
-              <div className="border-b px-4 py-3 flex items-center justify-between">
+              {/* Chat Header - Fixed at top */}
+              <div className="bg-white/60 backdrop-blur-xl border-b border-white/20 px-4 py-3 flex items-center justify-between m-2 mb-0 rounded-t-2xl shadow-lg flex-shrink-0">
                 <div className="flex items-center gap-3">
                   {isMobile && (
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="bg-white/30 backdrop-blur-sm border border-white/20 hover:bg-white/50"
                       onClick={() => {
+                        setSearchParams({});
                         setShowChat(false);
                         setSelectedFriend(null);
                       }}
@@ -359,24 +664,27 @@ export default function Messages() {
                       <ArrowLeft className="h-5 w-5" />
                     </Button>
                   )}
-                  <Avatar className="h-10 w-10">
+                  <Avatar className="h-10 w-10 border-2 border-white/30">
                     <AvatarImage src={selectedFriend.profiles.avatar_url} />
-                    <AvatarFallback>
+                    <AvatarFallback className="bg-gradient-to-br from-orange-400 to-pink-400 text-white">
                       {selectedFriend.profiles.display_name?.charAt(0) || selectedFriend.profiles.username?.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="font-semibold text-sm md:text-base">
+                    <h3 className="font-semibold text-sm md:text-base text-gray-800">
                       {selectedFriend.profiles.display_name || selectedFriend.profiles.username}
                     </h3>
-                    <p className="text-xs text-muted-foreground">@{selectedFriend.profiles.username}</p>
+                    <p className="text-xs text-gray-500">@{selectedFriend.profiles.username}</p>
                   </div>
                 </div>
                 
                 {/* Share Challenge Dialog */}
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button size={isMobile ? "icon" : "sm"} variant="outline">
+                    <Button 
+                      size={isMobile ? "icon" : "sm"} 
+                      className="bg-white/30 backdrop-blur-sm border border-white/20 hover:bg-white/50 text-gray-700"
+                    >
                       <Share2 className="h-4 w-4" />
                       {!isMobile && <span className="ml-2">Share</span>}
                     </Button>
@@ -428,9 +736,10 @@ export default function Messages() {
                 </Dialog>
               </div>
 
-              {/* Messages */}
-              <ScrollArea className="flex-1 p-4">
-                <div className="space-y-4">
+              {/* Messages - Scrollable area */}
+              <div className="flex-1 overflow-hidden m-2 mt-0">
+                <ScrollArea className="h-full bg-white/40 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20">
+                  <div className="p-4 space-y-4">
                   {messages.map((message) => {
                     const isOwn = message.sender_id === user.id;
                     return (
@@ -443,28 +752,29 @@ export default function Messages() {
                             <SharedChallengeCard challenge={message.challenges} />
                           ) : (
                             <div
-                              className={`px-4 py-2 rounded-2xl ${
+                              className={`px-4 py-2 rounded-2xl backdrop-blur-sm border ${
                                 isOwn
-                                  ? 'bg-primary text-primary-foreground rounded-br-sm'
-                                  : 'bg-muted rounded-bl-sm'
+                                  ? 'bg-gradient-to-r from-orange-400 to-pink-400 text-white border-orange-300/30 rounded-br-sm shadow-lg'
+                                  : 'bg-white/60 border-white/30 rounded-bl-sm shadow-md'
                               }`}
                             >
-                              <p className="text-sm">{message.content}</p>
+                              <p className={`text-sm ${isOwn ? 'text-white' : 'text-gray-800'}`}>{message.content}</p>
                             </div>
                           )}
-                          <p className="text-xs text-muted-foreground px-1">
+                          <p className="text-xs text-gray-500 px-1">
                             {format(new Date(message.created_at), 'HH:mm')}
                           </p>
                         </div>
                       </div>
                     );
                   })}
-                  <div ref={messagesEndRef} />
-                </div>
-              </ScrollArea>
+                    <div ref={messagesEndRef} />
+                  </div>
+                </ScrollArea>
+              </div>
 
-              {/* Message Input */}
-              <div className="border-t p-3 md:p-4 bg-card">
+              {/* Message Input - Fixed at bottom */}
+              <div className="bg-white/60 backdrop-blur-xl border-t border-white/20 p-3 md:p-4 m-2 mt-0 rounded-b-2xl shadow-lg flex-shrink-0">
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -476,13 +786,13 @@ export default function Messages() {
                     placeholder="Message..."
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    className="flex-1 rounded-full"
+                    className="flex-1 rounded-full bg-white/50 backdrop-blur-sm border-white/30 focus:bg-white/70 focus:border-orange-300/50"
                   />
                   <Button 
                     type="submit" 
                     size="icon" 
                     disabled={!newMessage.trim()}
-                    className="rounded-full flex-shrink-0"
+                    className="rounded-full flex-shrink-0 bg-gradient-to-r from-orange-400 to-pink-400 hover:from-orange-500 hover:to-pink-500 border-0 shadow-lg"
                   >
                     <Send className="h-4 w-4" />
                   </Button>
@@ -490,10 +800,10 @@ export default function Messages() {
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center p-4">
-              <div className="text-center space-y-3">
-                <MessageCircle className="h-16 w-16 mx-auto text-muted-foreground" />
-                <p className="text-muted-foreground">
+            <div className="flex-1 flex items-center justify-center p-4 m-2">
+              <div className="text-center space-y-3 bg-white/40 backdrop-blur-xl rounded-2xl p-8 shadow-lg border border-white/20">
+                <MessageCircle className="h-16 w-16 mx-auto text-orange-400" />
+                <p className="text-gray-600 font-medium">
                   Select a friend to start chatting
                 </p>
               </div>
@@ -501,6 +811,56 @@ export default function Messages() {
           )}
         </div>
       )}
+
+      {/* Friend Search Dialog */}
+      <Dialog open={showFriendSearch} onOpenChange={setShowFriendSearch}>
+        <DialogContent className="max-w-md mx-4">
+          <DialogHeader>
+            <DialogTitle>Nouvelle conversation</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher un utilisateur..."
+                value={friendSearchQuery}
+                onChange={(e) => setFriendSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            
+            {searchResults.length > 0 && (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {searchResults.map((friend) => (
+                  <Button
+                    key={friend.id}
+                    variant="ghost"
+                    className="w-full justify-start gap-3 h-auto py-3"
+                    onClick={() => startNewConversation(friend.profiles.user_id)}
+                  >
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={friend.profiles.avatar_url} />
+                      <AvatarFallback className="bg-gradient-to-br from-orange-400 to-pink-400 text-white">
+                        {friend.profiles.display_name?.charAt(0) || friend.profiles.username?.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 text-left">
+                      <p className="font-medium text-sm">{friend.profiles.display_name || friend.profiles.username}</p>
+                      <p className="text-xs text-muted-foreground">@{friend.profiles.username}</p>
+                    </div>
+                  </Button>
+                ))}
+              </div>
+            )}
+            
+            {friendSearchQuery.length >= 2 && searchResults.length === 0 && (
+              <div className="text-center py-4">
+                <p className="text-sm text-muted-foreground">Aucun utilisateur trouvé</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
 
@@ -17,7 +17,14 @@ const GlassFabNav: React.FC<GlassFabNavProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { triggerHaptic } = useHapticFeedback();
+
+  // Hide navigation when in a conversation (messages page with friend_id param)
+  const isInConversation = location.pathname.startsWith('/messages') && searchParams.get('friend_id');
+  if (isInConversation) {
+    return null;
+  }
 
   const items = [
     { id: "home", label: "Home", icon: <img src={homeIcon} alt="Home" className="h-5 w-5" />, href: "/" },
@@ -72,14 +79,18 @@ const GlassFabNav: React.FC<GlassFabNavProps> = ({
               className={`
                 fab-size glass glass-transition
                 flex items-center justify-center
-                ${active ? 'bg-orange-500/20 border-orange-400/40' : ''}
+                ${active 
+                  ? 'bg-gradient-to-r from-orange-400/30 to-pink-400/30 border-orange-400/60 shadow-lg shadow-orange-400/20' 
+                  : 'hover:bg-white/10'
+                }
                 hover:scale-105 active:scale-95
                 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
+                transition-all duration-200
               `}
               aria-label={item.label}
               title={item.label}
             >
-              <div className={`${active ? 'opacity-100' : 'opacity-80'} transition-opacity duration-200`}>
+              <div className={`${active ? 'opacity-100 brightness-110' : 'opacity-80'} transition-all duration-200`}>
                 {item.icon}
               </div>
             </Button>

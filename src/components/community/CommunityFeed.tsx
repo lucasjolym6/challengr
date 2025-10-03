@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Filter, TrendingUp, Clock, Users, Star, ChevronDown } from "lucide-react";
+import { Filter, TrendingUp, Clock, Users, Star, ChevronDown, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import PostCard from './PostCard';
 import FeedFilters, { FilterType } from './FeedFilters';
 import TrendingSection from './TrendingSection';
 import { useSpring, animated } from '@react-spring/web';
+import { useSearchParams } from "react-router-dom";
 
 export interface CommunityPost {
   id: string;
@@ -84,6 +85,7 @@ type SortMode = 'smart' | 'newest' | 'popular' | 'trending';
 const CommunityFeed: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
   
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,15 +93,26 @@ const CommunityFeed: React.FC = () => {
   const [activeFilters, setActiveFilters] = useState<FilterType[]>(['all']);
   const [showTrending, setShowTrending] = useState(false);
   
+  // Get search query from URL
+  const searchQuery = searchParams.get('search') || '';
+  
   // Animation for filter changes
   const [filterAnimation, setFilterAnimation] = useSpring(() => ({
     opacity: 1,
     transform: 'translateY(0px)',
   }));
 
+  // Normalize text for search (remove accents and convert to lowercase)
+  const normalizeText = (text: string) => {
+    return text
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  };
+
   useEffect(() => {
     fetchPosts();
-  }, [sortMode, activeFilters]);
+  }, [sortMode, activeFilters, searchQuery]);
 
   const fetchPosts = async () => {
     try {
@@ -435,7 +448,24 @@ const CommunityFeed: React.FC = () => {
           break;
       }
 
-      setPosts(sortedPosts);
+      // Apply search filter if search query exists
+      let filteredPosts = sortedPosts;
+      if (searchQuery.trim()) {
+        const normalizedQuery = normalizeText(searchQuery);
+        filteredPosts = sortedPosts.filter(post => {
+          const normalizedContent = normalizeText(post.content);
+          const normalizedTitle = normalizeText(post.challenge.title);
+          const normalizedUsername = normalizeText(post.user.username);
+          const normalizedCategory = normalizeText(post.challenge.category.name);
+          
+          return normalizedContent.includes(normalizedQuery) ||
+                 normalizedTitle.includes(normalizedQuery) ||
+                 normalizedUsername.includes(normalizedQuery) ||
+                 normalizedCategory.includes(normalizedQuery);
+        });
+      }
+
+      setPosts(filteredPosts);
     } catch (error) {
       console.error('Error fetching posts:', error);
       toast({
@@ -478,6 +508,19 @@ const CommunityFeed: React.FC = () => {
 
   return (
     <div className="w-full max-w-md mx-auto px-4 py-6">
+      {/* Search Results Header */}
+      {searchQuery && (
+        <div className="bg-gradient-to-r from-orange-400/20 to-pink-400/20 border border-orange-400/30 rounded-2xl p-4 mb-6 backdrop-blur-xl">
+          <div className="flex items-center gap-2 mb-2">
+            <Search className="w-5 h-5 text-orange-600" />
+            <h3 className="text-lg font-semibold text-orange-800">Search Results</h3>
+          </div>
+          <p className="text-orange-700/80">
+            Found {posts.length} post(s) for "{searchQuery}"
+          </p>
+        </div>
+      )}
+
       {/* iOS26-Inspired Header */}
       <div className="space-y-4 mb-6">
 
@@ -593,7 +636,12 @@ const CommunityFeed: React.FC = () => {
           <div className="text-center py-16">
             <div className="text-8xl mb-6">🎯</div>
             <h3 className="text-xl font-bold mb-3 text-gray-900">Aucun post trouvé</h3>
-            <p className="text-gray-600">Essayez de modifier vos filtres ou votre recherche !</p>
+            <p className="text-gray-600">
+              {searchQuery 
+                ? `Aucun post trouvé pour "${searchQuery}"`
+                : "Essayez de modifier vos filtres ou votre recherche !"
+              }
+            </p>
           </div>
         ) : (
           posts.map((post) => (

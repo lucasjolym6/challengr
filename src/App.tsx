@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import { Layout } from "@/components/layout/Layout";
 import GlassFabNav from "@/components/nav/GlassFabNav";
 import SupabaseConfigError from "@/components/SupabaseConfigError";
@@ -39,7 +40,8 @@ const App = () => {
       <BrowserRouter>
         <TooltipProvider>
           <AuthProvider>
-            <Layout>
+            <NotificationProvider>
+              <Layout>
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/challenges" element={<Challenges />} />
@@ -58,6 +60,7 @@ const App = () => {
               {/* Glass FAB Navigation */}
               <GlassFabNav />
             </Layout>
+            </NotificationProvider>
           </AuthProvider>
           <Toaster />
           <Sonner />

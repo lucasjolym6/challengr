@@ -9,12 +9,13 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { Plus, Trophy, TrendingUp } from "lucide-react";
+import { Plus, Trophy, TrendingUp, Search } from "lucide-react";
 import ChallengeDetailDialog from "@/components/challenges/ChallengeDetailDialog";
 import { CreateChallengeDialog } from "@/components/challenges/CreateChallengeDialog";
 import { DifficultyCircle } from "@/components/ui/difficulty-circle";
 import { UserLevelBadge } from "@/components/ui/user-level-badge";
 import { ChallengesHeader } from "@/components/challenges/ChallengesHeader";
+import { useSearchParams } from "react-router-dom";
 // Feed moved to separate page
 
 // Import category images
@@ -71,6 +72,7 @@ interface Category {
 const Challenges = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [userChallenges, setUserChallenges] = useState<UserChallenge[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -81,6 +83,17 @@ const Challenges = () => {
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   
   const [loading, setLoading] = useState(true);
+  
+  // Get search query from URL
+  const searchQuery = searchParams.get('search') || '';
+
+  // Normalize text for search (remove accents and convert to lowercase)
+  const normalizeText = (text: string) => {
+    return text
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  };
 
   // Helper function to enrich challenges with category data
   const enrichChallengesWithCategories = (challenges: any[], categories: any[]) => {
@@ -414,7 +427,21 @@ const Challenges = () => {
   const filteredChallenges = challenges.filter(c => {
     const categoryMatch = selectedCategory === 'all' || c.challenge_categories?.name === selectedCategory;
     const typeMatch = selectedType === 'all' || c.type === selectedType;
-    return categoryMatch && typeMatch;
+    
+    // Apply search filter if search query exists
+    let searchMatch = true;
+    if (searchQuery.trim()) {
+      const normalizedQuery = normalizeText(searchQuery);
+      const normalizedTitle = normalizeText(c.title);
+      const normalizedDescription = normalizeText(c.description);
+      const normalizedCategory = c.challenge_categories?.name ? normalizeText(c.challenge_categories.name) : '';
+      
+      searchMatch = normalizedTitle.includes(normalizedQuery) || 
+                   normalizedDescription.includes(normalizedQuery) ||
+                   normalizedCategory.includes(normalizedQuery);
+    }
+    
+    return categoryMatch && typeMatch && searchMatch;
   });
 
   const companyChallenges = filteredChallenges.filter(c => c.type === 'company');
@@ -583,6 +610,19 @@ const Challenges = () => {
       />
 
       <div className="container mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
+        {/* Search Results Header */}
+        {searchQuery && (
+          <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mb-6">
+            <div className="flex items-center gap-2 mb-2">
+              <Search className="w-5 h-5 text-primary" />
+              <h3 className="text-lg font-semibold text-primary">Search Results</h3>
+            </div>
+            <p className="text-muted-foreground">
+              Found {filteredChallenges.length} challenge(s) for "{searchQuery}"
+            </p>
+          </div>
+        )}
+
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3">
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
@@ -646,15 +686,19 @@ const Challenges = () => {
             <div className="text-4xl mb-4">🎯</div>
             <h3 className="text-xl font-semibold mb-2">No challenges found</h3>
             <p className="text-muted-foreground mb-4">
-              {selectedCategory === 'all' 
-                ? "No challenges available yet" 
-                : `No challenges found in ${selectedCategory} category`
+              {searchQuery 
+                ? `No challenges found for "${searchQuery}"`
+                : selectedCategory === 'all' 
+                  ? "No challenges available yet" 
+                  : `No challenges found in ${selectedCategory} category`
               }
             </p>
-            <Button onClick={() => setShowCreateDialog(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Create the first challenge
-            </Button>
+            {!searchQuery && (
+              <Button onClick={() => setShowCreateDialog(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Create the first challenge
+              </Button>
+            )}
           </div>
         )}
       </div>
