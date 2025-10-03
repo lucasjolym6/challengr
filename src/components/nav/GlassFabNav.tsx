@@ -40,6 +40,9 @@ const GlassFabNav: React.FC<GlassFabNavProps> = ({
     return location.pathname.startsWith(href);
   };
 
+  // Force re-render when location changes to maintain active state
+  const currentPath = location.pathname;
+
   const containerClasses = position === 'bottom' 
     ? 'fixed safe-area-bottom left-1/2 -translate-x-1/2 z-50'
     : 'fixed top-4 left-1/2 -translate-x-1/2 z-50';
@@ -54,14 +57,14 @@ const GlassFabNav: React.FC<GlassFabNavProps> = ({
             className={`
               fab-size glass glass-transition
               flex items-center justify-center
-              ${isActive(item.href) ? 'glass-active' : ''}
+              ${isActive(item.href) ? 'glass-active bg-orange-500/20 border-orange-400/40' : ''}
               hover:scale-105 active:scale-95
               focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
             `}
             aria-label={item.label}
             title={item.label}
           >
-            <div className={`${isActive(item.href) ? 'opacity-100' : 'opacity-80'}`}>
+            <div className={`${isActive(item.href) ? 'opacity-100 scale-110' : 'opacity-80'} transition-all duration-200`}>
               {item.icon}
             </div>
           </Button>

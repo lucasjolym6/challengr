@@ -58,7 +58,7 @@ export function getLevelInfo(totalPoints: number): LevelInfo {
   const currentLevelData = LEVEL_REQUIREMENTS.find(l => l.level === currentLevel)!;
   const nextLevelData = LEVEL_REQUIREMENTS.find(l => l.level === currentLevel + 1);
   
-  const pointsForNextLevel = nextLevelData ? nextLevelData.points - totalPoints : 0;
+  const pointsForNextLevel = nextLevelData ? nextLevelData.points : 0;
   const progressToNextLevel = nextLevelData 
     ? Math.min(1, (totalPoints - currentLevelData.points) / (nextLevelData.points - currentLevelData.points))
     : 1;

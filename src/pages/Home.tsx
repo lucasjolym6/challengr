@@ -25,6 +25,7 @@ import { LevelProgress } from '@/components/ui/level-progress';
 import { DifficultyCircle } from '@/components/ui/difficulty-circle';
 import { CommunityActivity } from '@/components/home/CommunityActivity';
 import { getLevelInfo, getLevelFromPoints } from '@/lib/levelSystem';
+import { UserHeaderGlass } from '@/components/user/UserHeaderGlass';
 
 // Import category images
 import sportsImg from "@/assets/category-sports.jpg";
@@ -204,68 +205,18 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Section 1: User Status (Mobile-Optimized Header) */}
+      {/* Section 1: User Status - iOS 26 Glass Header */}
       <div className="relative bg-gradient-to-br from-orange-500/20 via-orange-400/15 to-orange-300/10 border-b border-border/40 -mt-20 pt-20">
-        <div className="px-4 py-6 md:px-6 md:py-8">
-          <div className="space-y-4">
-            {/* User Profile Header - Mobile Optimized */}
-            <div className="flex items-start gap-3">
-              <Avatar className="h-16 w-16 border-3 border-primary/20 flex-shrink-0">
-                <AvatarImage src={profile?.avatar_url || undefined} />
-                <AvatarFallback className="text-lg font-bold bg-primary/10">
-                  {profile?.display_name?.charAt(0) || profile?.username?.charAt(0) || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              
-              <div className="flex-1 min-w-0">
-                {/* Name and Level Badge */}
-                <div className="flex items-center gap-2 mb-2">
-                  <h1 className="text-xl font-bold truncate">
-                    {profile?.display_name || profile?.username || 'User'}
-              </h1>
-            </div>
-
-                {/* Level Progress - NEW FORMAT: 30/20 pts */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <UserLevelBadge totalPoints={profile?.total_points || 0} size="lg" />
-                  </div>
-                  <LevelProgress totalPoints={profile?.total_points || 0} size="sm" showDetails={true} />
-                </div>
-              </div>
-            </div>
-
-            {/* Personal KPIs - Mobile Grid */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="text-center p-3 rounded-lg bg-background/70 backdrop-blur-sm border border-border/40">
-                <div className="text-xl font-bold text-primary mb-1">
-                  {profile?.total_points || 0}
-                </div>
-                <div className="text-xs text-muted-foreground font-medium">
-                  Points
-                </div>
-              </div>
-              
-              <div className="text-center p-3 rounded-lg bg-background/70 backdrop-blur-sm border border-border/40">
-                <div className="text-xl font-bold text-foreground mb-1">
-                  {activeChallenges.length}
-                </div>
-                <div className="text-xs text-muted-foreground font-medium">
-                  Actifs
-                </div>
-              </div>
-              
-              <div className="text-center p-3 rounded-lg bg-background/70 backdrop-blur-sm border border-border/40">
-                <div className="text-xl font-bold text-foreground mb-1">
-                  {profile?.total_points ? getLevelFromPoints(profile.total_points) : 1}
-                </div>
-                <div className="text-xs text-muted-foreground font-medium">
-                  Niveau
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <UserHeaderGlass
+          avatarUrl={profile?.avatar_url}
+          username={profile?.display_name || profile?.username || 'User'}
+          level={profile?.total_points ? getLevelFromPoints(profile.total_points) : 1}
+          levelTitle={getLevelInfo(profile?.total_points ? getLevelFromPoints(profile.total_points) : 1).title}
+          points={profile?.total_points || 0}
+          activeChallenges={activeChallenges.length}
+          currentLevelPoints={profile?.total_points ? profile.total_points - getLevelInfo(getLevelFromPoints(profile.total_points)).pointsRequired : 0}
+          pointsToNextLevel={getLevelInfo(profile?.total_points ? getLevelFromPoints(profile.total_points) : 1).pointsForNextLevel}
+        />
       </div>
 
       <div className="container mx-auto px-4 md:px-6 py-6 md:py-8 space-y-8">
