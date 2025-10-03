@@ -205,7 +205,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       {/* Section 1: User Status (Mobile-Optimized Header) */}
-      <div className="relative bg-gradient-to-br from-primary/10 via-background to-accent/10 border-b border-border/40">
+      <div className="relative bg-gradient-to-br from-orange-500/20 via-orange-400/15 to-orange-300/10 border-b border-border/40 -mt-20 pt-20">
         <div className="px-4 py-6 md:px-6 md:py-8">
           <div className="space-y-4">
             {/* User Profile Header - Mobile Optimized */}

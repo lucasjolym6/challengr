@@ -574,8 +574,8 @@ const Challenges = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Section - Strava style */}
-      <div className="relative bg-gradient-to-br from-primary/10 via-background to-accent/10 border-b border-border/40">
+      {/* Hero Section - Strava style with full height orange background */}
+      <div className="relative bg-gradient-to-br from-orange-500/20 via-orange-400/15 to-orange-300/10 border-b border-border/40 -mt-20 pt-20">
         <div className="container mx-auto px-4 md:px-6 py-8 md:py-12">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-2">

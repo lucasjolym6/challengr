@@ -16,6 +16,12 @@ import {
   Crown,
   MessageCircle
 } from 'lucide-react';
+
+// Import custom icons
+import homeIcon from '/icons/home-03-Stroke-Rounded.png';
+import awardIcon from '/icons/award-01-Stroke-Rounded.png';
+import chatQuestionIcon from '/icons/chat-question-Stroke-Rounded.png';
+import userCircleIcon from '/icons/user-circle-Stroke-Rounded.png';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Profile {
@@ -61,14 +67,15 @@ export const Navigation: React.FC = () => {
       {/* Mobile-first: Top bar - LinkedIn style */}
       <header className="fixed top-0 left-0 right-0 h-14 bg-card/95 backdrop-blur-md border-b border-border z-50 flex items-center px-4 md:hidden">
         <div className="flex items-center w-full">
-          {/* Profile Avatar - Left */}
+          {/* Profile Icon - Left */}
           <Link to="/profile" className="flex-shrink-0">
-            <Avatar className="h-8 w-8 border-2 border-transparent hover:border-primary/50 transition-colors">
-              <AvatarImage src={profile?.avatar_url || undefined} />
-              <AvatarFallback className="text-xs font-medium">
-                {profile?.display_name?.charAt(0) || profile?.username?.charAt(0) || 'U'}
-              </AvatarFallback>
-            </Avatar>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`h-8 w-8 ${isActive('/profile') ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              <img src={userCircleIcon} alt="Profile" className="h-5 w-5" />
+            </Button>
           </Link>
 
           {/* Search Bar - Center */}
@@ -93,21 +100,33 @@ export const Navigation: React.FC = () => {
       <nav className="fixed bottom-0 left-0 right-0 h-16 bg-card/95 backdrop-blur-md border-t border-border z-50 md:hidden">
         <div className="flex justify-around items-center h-full px-1">
           <Link to="/" className="flex flex-col items-center justify-center flex-1 py-2">
-            <Home className={`h-6 w-6 mb-1 ${isActive('/') ? 'text-primary' : 'text-muted-foreground'}`} />
+            <img 
+              src={homeIcon} 
+              alt="Home" 
+              className={`h-6 w-6 mb-1 ${isActive('/') ? 'opacity-100' : 'opacity-60'}`}
+            />
             <span className={`text-xs ${isActive('/') ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
               Home
             </span>
           </Link>
 
           <Link to="/challenges" className="flex flex-col items-center justify-center flex-1 py-2">
-            <Trophy className={`h-6 w-6 mb-1 ${isActive('/challenges') ? 'text-primary' : 'text-muted-foreground'}`} />
+            <img 
+              src={awardIcon} 
+              alt="Challenges" 
+              className={`h-6 w-6 mb-1 ${isActive('/challenges') ? 'opacity-100' : 'opacity-60'}`}
+            />
             <span className={`text-xs ${isActive('/challenges') ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
               Challenges
             </span>
           </Link>
 
           <Link to="/community" className="flex flex-col items-center justify-center flex-1 py-2">
-            <Users className={`h-6 w-6 mb-1 ${isActive('/community') ? 'text-primary' : 'text-muted-foreground'}`} />
+            <img 
+              src={chatQuestionIcon} 
+              alt="Community" 
+              className={`h-6 w-6 mb-1 ${isActive('/community') ? 'opacity-100' : 'opacity-60'}`}
+            />
             <span className={`text-xs ${isActive('/community') ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
               Community
             </span>
@@ -130,7 +149,7 @@ export const Navigation: React.FC = () => {
               variant={isActive('/') ? 'default' : 'ghost'}
               className="w-full justify-start gap-2"
             >
-              <Home className="h-4 w-4" />
+              <img src={homeIcon} alt="Home" className="h-4 w-4" />
               Home
             </Button>
           </Link>
@@ -140,7 +159,7 @@ export const Navigation: React.FC = () => {
               variant={isActive('/challenges') ? 'default' : 'ghost'}
               className="w-full justify-start gap-2"
             >
-              <Trophy className="h-4 w-4" />
+              <img src={awardIcon} alt="Challenges" className="h-4 w-4" />
               Challenges
             </Button>
           </Link>
@@ -150,7 +169,7 @@ export const Navigation: React.FC = () => {
               variant={isActive('/community') ? 'default' : 'ghost'}
               className="w-full justify-start gap-2"
             >
-              <Users className="h-4 w-4" />
+              <img src={chatQuestionIcon} alt="Community" className="h-4 w-4" />
               Community
             </Button>
           </Link>

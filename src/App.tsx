@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { Layout } from "@/components/layout/Layout";
+import GlassFabNav from "@/components/nav/GlassFabNav";
 import SupabaseConfigError from "@/components/SupabaseConfigError";
 import Home from "./pages/Home";
 import Challenges from "./pages/Challenges";
@@ -53,6 +54,9 @@ const App = () => {
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              
+              {/* Glass FAB Navigation */}
+              <GlassFabNav />
             </Layout>
           </AuthProvider>
           <Toaster />
