@@ -24,7 +24,7 @@ import { UserLevelBadge } from '@/components/ui/user-level-badge';
 import { LevelProgress } from '@/components/ui/level-progress';
 import { DifficultyCircle } from '@/components/ui/difficulty-circle';
 import { CommunityActivity } from '@/components/home/CommunityActivity';
-import { getLevelInfo } from '@/lib/levelSystem';
+import { getLevelInfo, getLevelFromPoints } from '@/lib/levelSystem';
 
 // Import category images
 import sportsImg from "@/assets/category-sports.jpg";
@@ -222,12 +222,16 @@ export default function Home() {
                 <div className="flex items-center gap-2 mb-2">
                   <h1 className="text-xl font-bold truncate">
                     {profile?.display_name || profile?.username || 'User'}
-                  </h1>
-                  <UserLevelBadge totalPoints={profile?.total_points || 0} size="sm" />
+              </h1>
+            </div>
+
+                {/* Level Progress - NEW FORMAT: 30/20 pts */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <UserLevelBadge totalPoints={profile?.total_points || 0} size="lg" />
+                  </div>
+                  <LevelProgress totalPoints={profile?.total_points || 0} size="sm" showDetails={true} />
                 </div>
-                
-                {/* Level Progress - Compact */}
-                <LevelProgress totalPoints={profile?.total_points || 0} size="sm" showDetails={false} />
               </div>
             </div>
 
@@ -253,7 +257,7 @@ export default function Home() {
               
               <div className="text-center p-3 rounded-lg bg-background/70 backdrop-blur-sm border border-border/40">
                 <div className="text-xl font-bold text-foreground mb-1">
-                  {profile?.level || 1}
+                  {profile?.total_points ? getLevelFromPoints(profile.total_points) : 1}
                 </div>
                 <div className="text-xs text-muted-foreground font-medium">
                   Niveau
@@ -268,17 +272,17 @@ export default function Home() {
         
         {/* Section 1.5: Active Challenges */}
         {activeChallenges.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
                 <Activity className="w-6 h-6 text-primary" />
-                <h2 className="text-xl md:text-2xl font-bold">Active Challenges</h2>
-              </div>
+              <h2 className="text-xl md:text-2xl font-bold">Active Challenges</h2>
+            </div>
               <Button variant="ghost" onClick={() => navigate('/challenges')} className="text-sm">
                 View All
                 <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
-            </div>
+          </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {activeChallenges.map((userChallenge) => (
@@ -297,7 +301,7 @@ export default function Home() {
                           </Badge>
                         </div>
                       </div>
-                      
+
                       <div className="p-4 space-y-3">
                         <div>
                           <h3 className="font-bold text-lg mb-1 line-clamp-2">
@@ -308,16 +312,16 @@ export default function Home() {
                           </p>
                         </div>
 
-                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center justify-between text-sm">
                           <div className="flex items-center gap-2">
                             <DifficultyCircle level={userChallenge.challenges.difficulty_level} size="sm" />
                             <span className="text-muted-foreground">
                               Level {userChallenge.challenges.difficulty_level}
                             </span>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Award className="w-4 h-4 text-primary" />
-                            <span className="font-semibold">{userChallenge.challenges.points_reward} pts</span>
+                            <div className="flex items-center gap-1">
+                              <Award className="w-4 h-4 text-primary" />
+                              <span className="font-semibold">{userChallenge.challenges.points_reward} pts</span>
                           </div>
                         </div>
 
@@ -416,15 +420,15 @@ export default function Home() {
                         >
                           Join Challenge
                           <ArrowRight className="w-4 h-4 ml-1" />
-                        </Button>
+                </Button>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+              </CardContent>
+            </Card>
               ))}
             </div>
           </div>
-        )}
+          )}
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

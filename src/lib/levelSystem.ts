@@ -42,6 +42,9 @@ export const LEVEL_REQUIREMENTS = [
 ];
 
 export function getLevelFromPoints(totalPoints: number): number {
+  // Ensure we handle the case where user has 0 points (should be level 1, not level 0)
+  if (totalPoints < 0) totalPoints = 0;
+  
   for (let i = LEVEL_REQUIREMENTS.length - 1; i >= 0; i--) {
     if (totalPoints >= LEVEL_REQUIREMENTS[i].points) {
       return LEVEL_REQUIREMENTS[i].level;

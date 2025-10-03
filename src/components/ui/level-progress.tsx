@@ -16,6 +16,14 @@ export const LevelProgress: React.FC<LevelProgressProps> = ({
 }) => {
   const levelInfo = getLevelInfo(totalPoints);
   const isMaxLevel = levelInfo.level === 10;
+  
+  // Debug: Force reload to see new format
+  console.log('LevelProgress NEW FORMAT:', {
+    totalPoints,
+    pointsRequired: levelInfo.pointsRequired,
+    pointsForNextLevel: levelInfo.pointsForNextLevel,
+    displayFormat: `${totalPoints - levelInfo.pointsRequired}/${levelInfo.pointsForNextLevel} pts`
+  });
 
   const sizeClasses = {
     sm: {
@@ -54,7 +62,7 @@ export const LevelProgress: React.FC<LevelProgressProps> = ({
           </span>
           {!isMaxLevel && (
             <span className={cn('text-muted-foreground', classes.text)}>
-              {levelInfo.pointsForNextLevel} pts restants
+              {totalPoints - levelInfo.pointsRequired}/{levelInfo.pointsForNextLevel} pts
             </span>
           )}
         </div>
@@ -88,10 +96,10 @@ export const LevelProgress: React.FC<LevelProgressProps> = ({
         {!isMaxLevel && showDetails && (
           <div className="flex justify-between mt-1">
             <span className={cn('text-muted-foreground', classes.text)}>
-              {levelInfo.pointsRequired} pts
+              {totalPoints - levelInfo.pointsRequired}/{levelInfo.pointsForNextLevel} pts
             </span>
             <span className={cn('text-muted-foreground', classes.text)}>
-              {levelInfo.pointsForNextLevel} pts restants
+              vers niveau {levelInfo.level + 1}
             </span>
           </div>
         )}
