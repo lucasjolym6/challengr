@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Search, Users, X } from "lucide-react";
 import { searchFriends as searchFriendsUtil } from "@/utils/friendSearch";
+import { useConversations } from "@/hooks/useConversations";
 
 interface Profile {
   user_id: string;
@@ -31,6 +32,7 @@ export const CreateGroupDialog: React.FC<CreateGroupDialogProps> = ({
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { createGroupConversation } = useConversations();
   const [groupName, setGroupName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
@@ -112,36 +114,14 @@ export const CreateGroupDialog: React.FC<CreateGroupDialogProps> = ({
     setLoading(true);
 
     try {
-      // Create conversation
-      const { data: conversation, error: convError } = await supabase
-        .from('conversations')
-        .insert({
-          name: groupName.trim(),
-          type: 'group',
-          created_by: user.id
-        })
-        .select()
-        .single();
+      // Use the hook function to create group conversation
+      const conversationId = await createGroupConversation(
+        groupName.trim(),
+        selectedMembers.map(member => member.user_id)
+      );
 
-      if (convError) {
-        throw convError;
-      }
-
-      // Add creator as member
-      const membersToAdd = [
-        { conversation_id: conversation.id, user_id: user.id },
-        ...selectedMembers.map(member => ({
-          conversation_id: conversation.id,
-          user_id: member.user_id
-        }))
-      ];
-
-      const { error: membersError } = await supabase
-        .from('conversation_members')
-        .insert(membersToAdd);
-
-      if (membersError) {
-        throw membersError;
+      if (!conversationId) {
+        throw new Error('Failed to create group conversation');
       }
 
       toast({
@@ -149,7 +129,7 @@ export const CreateGroupDialog: React.FC<CreateGroupDialogProps> = ({
         description: `Le groupe "${groupName}" a été créé avec ${selectedMembers.length + 1} membres`,
       });
 
-      onGroupCreated(conversation.id);
+      onGroupCreated(conversationId);
       onOpenChange(false);
 
     } catch (error) {

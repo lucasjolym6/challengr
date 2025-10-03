@@ -60,39 +60,48 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       const currentPath = location.pathname;
-      const searchParam = searchQuery.trim() ? `?search=${encodeURIComponent(searchQuery.trim())}` : '';
       
-      if (currentPath.startsWith('/community')) {
-        navigate(`/community${searchParam}`, { replace: true });
-      } else if (currentPath.startsWith('/challenges')) {
-        navigate(`/challenges${searchParam}`, { replace: true });
-      } else if (currentPath.startsWith('/profile') || 
-                 currentPath.startsWith('/messages') || 
-                 currentPath.startsWith('/settings') || 
-                 currentPath.startsWith('/validation') || 
-                 currentPath.startsWith('/pricing')) {
-        // For pages that don't support search, clear the search and stay on the page
-        if (searchQuery.trim()) {
-          // If there's a search query, redirect to challenges search instead
+      if (searchQuery.trim()) {
+        // If there's a search query, navigate with search params
+        const searchParam = `?search=${encodeURIComponent(searchQuery.trim())}`;
+        
+        if (currentPath.startsWith('/community')) {
+          navigate(`/community${searchParam}`, { replace: true });
+        } else if (currentPath.startsWith('/challenges')) {
           navigate(`/challenges${searchParam}`, { replace: true });
+        } else if (currentPath.startsWith('/profile') || 
+                   currentPath.startsWith('/settings') || 
+                   currentPath.startsWith('/validation') || 
+                   currentPath.startsWith('/pricing')) {
+          // For pages that don't support search, redirect to challenges search
+          navigate(`/challenges${searchParam}`, { replace: true });
+        } else if (currentPath.startsWith('/messages')) {
+          // For messages page, don't redirect - let it handle its own navigation
+          // Messages page doesn't support search, so ignore search queries
         } else {
-          // If clearing search, just update URL without search params
-          navigate(currentPath, { replace: true });
+          // For home page and other pages, default to challenges search
+          navigate(`/challenges${searchParam}`, { replace: true });
         }
       } else {
-        // For home page and other pages
-        if (currentPath === '/' && !searchQuery.trim()) {
-          // Stay on home page if no search query
-          navigate('/', { replace: true });
-        } else {
-          // Default to challenges search for other cases
-          navigate(`/challenges${searchParam}`, { replace: true });
+        // If search query is empty, clear search params but stay on current page
+        if (location.search) {
+          // For messages page, preserve conversation_id and other message-related params
+          if (currentPath.startsWith('/messages')) {
+            const urlParams = new URLSearchParams(location.search);
+            // Remove only search-related params, keep conversation_id and others
+            urlParams.delete('search');
+            const remainingParams = urlParams.toString();
+            const newUrl = remainingParams ? `${currentPath}?${remainingParams}` : currentPath;
+            navigate(newUrl, { replace: true });
+          } else {
+            navigate(currentPath, { replace: true });
+          }
         }
       }
     }, 300); // 300ms debounce
 
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, navigate, location.pathname]);
+  }, [searchQuery, navigate, location.pathname, location.search]);
 
   // Handle search input change
   const handleSearchChange = (query: string) => {

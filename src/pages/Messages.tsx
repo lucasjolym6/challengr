@@ -49,7 +49,7 @@ export default function Messages() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Hooks
-  const { conversations, loading: conversationsLoading, fetchConversations, createIndividualConversation } = useConversations();
+  const { conversations, loading: conversationsLoading, fetchConversations, createIndividualConversation, createGroupConversation } = useConversations();
   const { messages, conversation, loading: messagesLoading, sendMessage, shareChallenge, markAsRead } = useConversationMessages(selectedConversationId);
 
   // Check if we're in a conversation based on URL params
@@ -58,10 +58,19 @@ export default function Messages() {
 
   useEffect(() => {
     if (user) {
+      console.log('Messages: Fetching conversations for user:', user.id);
       fetchConversations();
       fetchChallenges();
     }
   }, [user, fetchConversations]);
+
+  // Debug: Log conversations changes
+  useEffect(() => {
+    console.log('Messages: Conversations updated:', {
+      count: conversations.length,
+      conversations: conversations.map(c => ({ id: c.id, name: c.name, type: c.type }))
+    });
+  }, [conversations]);
 
   // Mark messages as read when user visits messages page
   useEffect(() => {
@@ -287,49 +296,6 @@ export default function Messages() {
                 >
                   <Plus className="h-5 w-5" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="bg-white/30 backdrop-blur-sm border border-white/20 hover:bg-white/50 text-gray-700"
-                  onClick={async () => {
-                    if (user) {
-                      const allFriends = await getAllFriends(user.id);
-                      console.log('All friends:', allFriends);
-                      
-                      // Test conversation tables
-                      try {
-                        const { data: conversations, error: convError } = await supabase
-                          .from('conversations')
-                          .select('*')
-                          .limit(1);
-                        
-                        console.log('Conversations table test:', conversations, convError);
-                        
-                        const { data: members, error: membersError } = await supabase
-                          .from('conversation_members')
-                          .select('*')
-                          .limit(1);
-                        
-                        console.log('Conversation members table test:', members, membersError);
-                        
-                        toast({
-                          title: "Debug",
-                          description: `Found ${allFriends.length} friends. Tables: ${convError ? 'ERROR' : 'OK'}`,
-                        });
-                      } catch (error) {
-                        console.error('Table test error:', error);
-                        toast({
-                          title: "Debug - Erreur Tables",
-                          description: "Les tables de conversation n'existent pas",
-                          variant: "destructive"
-                        });
-                      }
-                    }
-                  }}
-                  title="Debug - Voir tous les amis et tester les tables"
-                >
-                  🐛
-                </Button>
               </div>
             </div>
           </div>
@@ -403,8 +369,8 @@ export default function Messages() {
         <div className="flex-1 flex flex-col h-screen">
           {selectedConversationId && conversation ? (
             <>
-              {/* Chat Header */}
-              <div className="bg-white/60 backdrop-blur-xl border-b border-white/20 px-4 py-3 flex items-center justify-between m-2 mb-0 rounded-t-2xl shadow-lg flex-shrink-0">
+              {/* Chat Header - Fixed at top */}
+              <div className="bg-white/60 backdrop-blur-xl border-b border-white/20 px-4 py-3 flex items-center justify-between m-2 mb-0 rounded-t-2xl shadow-lg flex-shrink-0 sticky top-0 z-10">
                 <div className="flex items-center gap-3">
                   {isMobile && (
                     <Button
@@ -527,8 +493,8 @@ export default function Messages() {
                 </ScrollArea>
               </div>
 
-              {/* Message Input */}
-              <div className="bg-white/60 backdrop-blur-xl border-t border-white/20 p-3 md:p-4 m-2 mt-0 rounded-b-2xl shadow-lg flex-shrink-0">
+              {/* Message Input - Fixed at bottom */}
+              <div className="bg-white/60 backdrop-blur-xl border-t border-white/20 p-3 md:p-4 m-2 mt-0 rounded-b-2xl shadow-lg flex-shrink-0 sticky bottom-0 z-10">
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();

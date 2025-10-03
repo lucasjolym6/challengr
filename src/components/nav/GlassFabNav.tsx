@@ -20,8 +20,8 @@ const GlassFabNav: React.FC<GlassFabNavProps> = ({
   const [searchParams] = useSearchParams();
   const { triggerHaptic } = useHapticFeedback();
 
-  // Hide navigation when in a conversation (messages page with friend_id param)
-  const isInConversation = location.pathname.startsWith('/messages') && searchParams.get('friend_id');
+  // Hide navigation when in a conversation (messages page with conversation_id param)
+  const isInConversation = location.pathname.startsWith('/messages') && searchParams.get('conversation_id');
   if (isInConversation) {
     return null;
   }
