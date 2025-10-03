@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ArrowLeft, Send, Heart, MessageCircle, Trophy, Clock, Target, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { UserLevelBadge } from '@/components/ui/user-level-badge';
 
 // Import category images (same as Challenges.tsx)
 import sportsImg from "@/assets/category-sports.jpg";
@@ -41,6 +42,7 @@ interface CommentReply {
   user_id: string;
   user_name: string;
   user_avatar: string | null;
+  user_level: number | null;
   created_at: string;
   likes_count: number;
 }
@@ -56,6 +58,7 @@ interface Comment {
     username: string;
     display_name: string | null;
     avatar_url: string | null;
+    level: number | null;
   };
   replies?: CommentReply[];
 }
@@ -140,7 +143,8 @@ const ChallengeFeed: React.FC = () => {
           profiles!posts_user_id_fkey (
             username,
             display_name,
-            avatar_url
+            avatar_url,
+            level
           )
         `)
         .in('user_challenge_id', userChallenges.map(uc => uc.id))
@@ -161,7 +165,8 @@ const ChallengeFeed: React.FC = () => {
           profiles!comments_user_id_fkey (
             username,
             display_name,
-            avatar_url
+            avatar_url,
+            level
           )
         `)
         .in('post_id', postIds)
@@ -184,6 +189,7 @@ const ChallengeFeed: React.FC = () => {
             user_id: reply.user_id,
             user_name: reply.profiles?.display_name || reply.profiles?.username || 'Utilisateur',
             user_avatar: reply.profiles?.avatar_url || null,
+            user_level: reply.profiles?.level || 1,
             created_at: reply.created_at,
             likes_count: 0,
           }))
@@ -338,7 +344,8 @@ const ChallengeFeed: React.FC = () => {
           profiles!comments_user_id_fkey (
             username,
             display_name,
-            avatar_url
+            avatar_url,
+            level
           )
         `)
         .single();
@@ -625,6 +632,7 @@ const ChallengeFeed: React.FC = () => {
                           <h4 className="font-semibold text-gray-900 text-sm">
                             {comment.profiles?.display_name || comment.profiles?.username || 'Utilisateur'}
                           </h4>
+                          <UserLevelBadge level={comment.profiles?.level || 1} size="sm" />
                           {comment.verified && (
                             <Badge className="bg-green-100 text-green-800 border-green-200 text-xs px-2 py-1">
                               <Trophy className="w-3 h-3 mr-1" />
@@ -722,7 +730,8 @@ const ChallengeFeed: React.FC = () => {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1">
                                 <span className="font-semibold text-xs">{reply.user_name}</span>
-                                <span className="text-xs text-gray-500">
+                                <UserLevelBadge level={reply.user_level || 1} size="sm" />
+                                <span className="text-xs text-gray-500 ml-auto">
                                   {formatTimeAgo(reply.created_at)}
                                 </span>
                               </div>

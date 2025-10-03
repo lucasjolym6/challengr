@@ -13,6 +13,7 @@ import { Plus, Trophy, TrendingUp } from "lucide-react";
 import ChallengeDetailDialog from "@/components/challenges/ChallengeDetailDialog";
 import { CreateChallengeDialog } from "@/components/challenges/CreateChallengeDialog";
 import { DifficultyCircle } from "@/components/ui/difficulty-circle";
+import { UserLevelBadge } from "@/components/ui/user-level-badge";
 // Feed moved to separate page
 
 // Import category images
@@ -432,19 +433,7 @@ const Challenges = () => {
     const status = userChallenge?.status || 'to_do';
     const creatorName = challenge.profiles?.display_name || challenge.profiles?.username || 'Unknown';
     const creatorInitials = creatorName.substring(0, 2).toUpperCase();
-    const creatorLevel = challenge.profiles?.level || 'Beginner';
-    
-    // Get level badge color
-    const getLevelBadgeColor = (level: any) => {
-      const levelStr = String(level || '').toLowerCase();
-      switch (levelStr) {
-        case 'beginner': return 'bg-green-50 text-green-700 border-green-200';
-        case 'intermediate': return 'bg-blue-50 text-blue-700 border-blue-200';
-        case 'advanced': return 'bg-purple-50 text-purple-700 border-purple-200';
-        case 'expert': return 'bg-red-50 text-red-700 border-red-200';
-        default: return 'bg-gray-50 text-gray-700 border-gray-200';
-      }
-    };
+    const creatorLevel = challenge.profiles?.level || 1;
 
     return (
       <Card 
@@ -530,9 +519,7 @@ const Challenges = () => {
             </Avatar>
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">by <span className="font-medium text-foreground">{creatorName}</span></span>
-              <Badge variant="outline" className={`text-xs px-2 py-0.5 ${getLevelBadgeColor(creatorLevel)}`}>
-                {creatorLevel}
-              </Badge>
+              <UserLevelBadge level={creatorLevel} size="sm" />
             </div>
           </div>
 
