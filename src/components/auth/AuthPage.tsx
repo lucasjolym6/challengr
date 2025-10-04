@@ -7,10 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export const AuthPage: React.FC = () => {
   const { signIn, signUp } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -44,6 +46,7 @@ export const AuthPage: React.FC = () => {
         title: "Welcome back!",
         description: "You've successfully signed in.",
       });
+      navigate('/challenges');
     }
 
     setLoading(false);
@@ -91,6 +94,7 @@ export const AuthPage: React.FC = () => {
         title: "Welcome to Challengr!",
         description: "Your account has been created successfully.",
       });
+      navigate('/challenges');
     }
 
     setLoading(false);

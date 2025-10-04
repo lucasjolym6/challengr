@@ -19,6 +19,7 @@ import Pricing from "./pages/Pricing";
 import Messages from "./pages/Messages";
 import ChallengeFeed from "./pages/ChallengeFeed";
 import NotFound from "./pages/NotFound";
+import { AuthPage } from "./components/auth/AuthPage";
 
 const queryClient = new QueryClient();
 
@@ -43,7 +44,8 @@ const App = () => {
             <NotificationProvider>
               <Layout>
               <Routes>
-                <Route path="/" element={<Home />} />
+                <Route path="/" element={<Challenges />} />
+                <Route path="/home" element={<Home />} />
                 <Route path="/challenges" element={<Challenges />} />
                 <Route path="/feed/:challengeId" element={<ChallengeFeed />} />
                 <Route path="/community" element={<Community />} />
@@ -53,6 +55,7 @@ const App = () => {
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/pricing" element={<Pricing />} />
+                <Route path="/auth" element={<AuthPage />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

@@ -95,18 +95,14 @@ export default function Home() {
   const [weeklyGoal, setWeeklyGoal] = useState(0);
 
   useEffect(() => {
-    if (user) {
-      fetchAllData();
-    }
+    fetchAllData();
   }, [user]);
 
   const fetchAllData = async () => {
-    if (!user) return;
-    
     try {
       await Promise.all([
-        fetchProfile(),
-        fetchActiveChallenges(),
+        user ? fetchProfile() : Promise.resolve(),
+        user ? fetchActiveChallenges() : Promise.resolve(),
         fetchFeaturedChallenges(),
         fetchCommunityStats()
       ]);
@@ -290,22 +286,53 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       {/* Section 1: User Status - iOS 26 Glass Header */}
       <div className="relative bg-gradient-to-br from-orange-500/20 via-orange-400/15 to-orange-300/10 border-b border-border/40 -mt-20 pt-20">
-        <UserHeaderGlass
-          avatarUrl={profile?.avatar_url}
-          username={profile?.display_name || profile?.username || 'User'}
-          level={profile?.total_points ? getLevelFromPoints(profile.total_points) : 1}
-          levelTitle={getLevelInfo(profile?.total_points ? getLevelFromPoints(profile.total_points) : 1).title}
-          points={profile?.total_points || 0}
-          activeChallenges={activeChallenges.length}
-          currentLevelPoints={profile?.total_points ? profile.total_points - getLevelInfo(getLevelFromPoints(profile.total_points)).pointsRequired : 0}
-          pointsToNextLevel={getLevelInfo(profile?.total_points ? getLevelFromPoints(profile.total_points) : 1).pointsForNextLevel}
-        />
+        {user ? (
+          <UserHeaderGlass
+            avatarUrl={profile?.avatar_url}
+            username={profile?.display_name || profile?.username || 'User'}
+            level={profile?.total_points ? getLevelFromPoints(profile.total_points) : 1}
+            levelTitle={getLevelInfo(profile?.total_points ? getLevelFromPoints(profile.total_points) : 1).title}
+            points={profile?.total_points || 0}
+            activeChallenges={activeChallenges.length}
+            currentLevelPoints={profile?.total_points ? profile.total_points - getLevelInfo(getLevelFromPoints(profile.total_points)).pointsRequired : 0}
+            pointsToNextLevel={getLevelInfo(profile?.total_points ? getLevelFromPoints(profile.total_points) : 1).pointsForNextLevel}
+          />
+        ) : (
+          <div className="container mx-auto px-4 md:px-6 py-8 md:py-12">
+            <div className="text-center">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-4">
+                Bienvenue sur Challengr
+              </h1>
+              <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
+                Rejoignez une communauté de passionnés et relevez des défis incroyables. 
+                Créez un compte gratuit pour commencer votre aventure !
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button 
+                  onClick={() => navigate('/auth')}
+                  size="lg"
+                  className="h-12 px-8 font-semibold shadow-lg bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white border-0 rounded-full"
+                >
+                  Créer un compte gratuit
+                </Button>
+                <Button 
+                  onClick={() => navigate('/challenges')}
+                  variant="outline"
+                  size="lg"
+                  className="h-12 px-8 font-semibold rounded-full"
+                >
+                  Explorer les défis
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="container mx-auto px-4 md:px-6 py-6 md:py-8 space-y-8">
         
-        {/* Section 1.5: Active Challenges */}
-        {activeChallenges.length > 0 && (
+        {/* Section 1.5: Active Challenges or Welcome Message */}
+        {user && activeChallenges.length > 0 ? (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -372,6 +399,38 @@ export default function Home() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          </div>
+        ) : !user && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <Activity className="w-6 h-6 text-primary" />
+              <h2 className="text-xl md:text-2xl font-bold">Commencez votre aventure</h2>
+            </div>
+            <div className="bg-gradient-to-r from-orange-50 to-pink-50 border border-orange-200 rounded-2xl p-6">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trophy className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-xl font-bold mb-2">Relevez des défis passionnants</h3>
+                <p className="text-muted-foreground mb-4">
+                  Créez un compte gratuit pour commencer des défis, gagner des points et rejoindre une communauté de passionnés !
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Button 
+                    onClick={() => navigate('/auth')}
+                    className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white"
+                  >
+                    Créer un compte gratuit
+                  </Button>
+                  <Button 
+                    onClick={() => navigate('/challenges')}
+                    variant="outline"
+                  >
+                    Voir tous les défis
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         )}

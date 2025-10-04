@@ -27,7 +27,7 @@ const GlassFabNav: React.FC<GlassFabNavProps> = ({
   }
 
   const items = [
-    { id: "home", label: "Home", icon: <img src={homeIcon} alt="Home" className="h-5 w-5" />, href: "/" },
+    { id: "home", label: "Home", icon: <img src={homeIcon} alt="Home" className="h-5 w-5" />, href: "/home" },
     { id: "challenges", label: "Challenges", icon: <img src={awardIcon} alt="Challenges" className="h-5 w-5" />, href: "/challenges" },
     { id: "community", label: "Community", icon: <img src={chatQuestionIcon} alt="Community" className="h-5 w-5" />, href: "/community" },
   ];
@@ -41,8 +41,8 @@ const GlassFabNav: React.FC<GlassFabNavProps> = ({
     const currentPath = location.pathname;
     
     // Exact match for home page
-    if (href === '/') {
-      return currentPath === '/' || currentPath === '';
+    if (href === '/home') {
+      return currentPath === '/home';
     }
     
     // For other pages, check if current path starts with the href

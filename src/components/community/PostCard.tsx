@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ProtectedActionButton } from "@/components/auth/ProtectedActionButton";
 import { 
   Heart, 
   MessageCircle, 
@@ -93,11 +94,8 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
   const handleLike = async () => {
     if (!user) {
-      toast({
-        title: "Connexion requise",
-        description: "Vous devez être connecté pour liker",
-        variant: "destructive",
-      });
+      // Cette fonction ne sera appelée que si l'utilisateur est connecté
+      // grâce au ProtectedActionButton
       return;
     }
 
@@ -173,7 +171,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
       handleLike();
     } else if (reaction === 'comment') {
       // Navigate to challenge with comments open
-      console.log('Navigate to comments for post:', post.id);
+      navigate(`/feed/${post.challenge_id}?highlight=${post.id}`);
     } else if (reaction === 'share') {
       // Handle share
       console.log('Share post:', post.id);
@@ -270,30 +268,36 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
             {/* Gamified Reaction Bar */}
             <div className="flex items-center space-x-3">
               {/* Like */}
-              <button
-                onClick={(e) => handleReactionClick(e, 'like')}
+              <ProtectedActionButton
+                onAuthed={handleLike}
                 className="flex items-center space-x-1 px-3 py-1.5 rounded-full bg-red-50 hover:bg-red-100 transition-all duration-200 hover:scale-105"
+                variant="ghost"
+                size="sm"
               >
                 <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-red-400'}`} />
                 <span className="text-red-600 font-bold text-sm">{likesCount}</span>
-              </button>
+              </ProtectedActionButton>
 
               {/* Comments */}
-              <button
-                onClick={(e) => handleReactionClick(e, 'comment')}
+              <ProtectedActionButton
+                onAuthed={() => navigate(`/feed/${post.challenge_id}?highlight=${post.id}`)}
                 className="flex items-center space-x-1 px-3 py-1.5 rounded-full bg-blue-50 hover:bg-blue-100 transition-all duration-200 hover:scale-105"
+                variant="ghost"
+                size="sm"
               >
                 <MessageCircle className="w-5 h-5 text-blue-400" />
                 <span className="text-blue-600 font-bold text-sm">{post.comments_count}</span>
-              </button>
+              </ProtectedActionButton>
 
               {/* Share */}
-              <button
-                onClick={(e) => handleReactionClick(e, 'share')}
+              <ProtectedActionButton
+                onAuthed={() => console.log('Share post:', post.id)}
                 className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 transition-all duration-200 hover:scale-105"
+                variant="ghost"
+                size="sm"
               >
                 <Share className="w-4 h-4 text-gray-600" />
-              </button>
+              </ProtectedActionButton>
             </div>
           </div>
         </div>

@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Plus, Target, Activity, CheckCircle } from 'lucide-react';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { useToast } from '@/hooks/use-toast';
+import { ProtectedActionButton } from '@/components/auth/ProtectedActionButton';
 
 interface ChallengesHeaderProps {
   activeChallenges: number;
@@ -70,6 +73,8 @@ export const ChallengesHeader: React.FC<ChallengesHeaderProps> = ({
   completedChallenges,
   onCreateChallenge
 }) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [launchedToday, setLaunchedToday] = useState(0);
 
   useEffect(() => {
@@ -102,14 +107,14 @@ export const ChallengesHeader: React.FC<ChallengesHeaderProps> = ({
           transition={{ duration: 0.5, delay: 0.2 }}
           className="flex justify-center mb-8"
         >
-          <Button
+          <ProtectedActionButton
             size="lg"
-            onClick={onCreateChallenge}
+            onAuthed={onCreateChallenge}
             className="h-14 px-8 font-semibold shadow-lg bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white border-0 rounded-full"
           >
             <Plus className="w-5 h-5 mr-2" />
             Create Challenge
-          </Button>
+          </ProtectedActionButton>
         </motion.div>
 
         {/* Stats Grid */}

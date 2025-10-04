@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { ProtectedActionButton } from "@/components/auth/ProtectedActionButton";
 import { Plus, Trophy, TrendingUp, Search } from "lucide-react";
 import ChallengeDetailDialog from "@/components/challenges/ChallengeDetailDialog";
 import { CreateChallengeDialog } from "@/components/challenges/CreateChallengeDialog";
@@ -191,7 +192,7 @@ const Challenges = () => {
         setChallenges([]);
       }
       
-      // Fetch user challenges
+      // Fetch user challenges (only if user is logged in)
       if (user) {
         try {
           const userChallengesRes = await supabase.from('user_challenges').select(`
@@ -210,6 +211,7 @@ const Challenges = () => {
           setUserChallenges([]);
         }
       } else {
+        // User not logged in - show challenges but no user-specific data
         setUserChallenges([]);
       }
       
@@ -226,7 +228,11 @@ const Challenges = () => {
   };
 
   const createCustomChallenge = async () => {
-    if (!user) return;
+    if (!user) {
+      // Cette fonction ne sera appelée que si l'utilisateur est connecté
+      // grâce au ProtectedActionButton
+      return;
+    }
 
     try {
       const { error } = await supabase.from('challenges').insert([{
@@ -264,7 +270,8 @@ const Challenges = () => {
 
   const startChallenge = async (challengeId: string) => {
     if (!user) {
-      console.error('No user found');
+      // Cette fonction ne sera appelée que si l'utilisateur est connecté
+      // grâce au ProtectedActionButton
       return;
     }
 
@@ -461,7 +468,7 @@ const Challenges = () => {
     const status = userChallenge?.status || 'to_do';
     const creatorName = challenge.profiles?.display_name || challenge.profiles?.username || 'Unknown';
     const creatorInitials = creatorName.substring(0, 2).toUpperCase();
-    const creatorLevel = challenge.profiles?.level || 1;
+    const creatorLevel = typeof challenge.profiles?.level === 'number' ? challenge.profiles.level : parseInt(challenge.profiles?.level || '1', 10);
 
     return (
       <Card 
@@ -555,26 +562,20 @@ const Challenges = () => {
           {/* CTA Button - Strava style full-width orange */}
           <div className="pt-2">
             {status === 'to_do' && (
-              <Button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openChallengeDetail(challenge);
-                }}
+              <ProtectedActionButton 
+                onAuthed={() => openChallengeDetail(challenge)}
                 className="w-full h-11 font-semibold text-base"
               >
                 Start Challenge
-              </Button>
+              </ProtectedActionButton>
             )}
             {status === 'in_progress' && (
-              <Button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  userChallenge && completeChallenge(userChallenge.id);
-                }}
+              <ProtectedActionButton 
+                onAuthed={() => userChallenge && completeChallenge(userChallenge.id)}
                 className="w-full h-11 font-semibold text-base"
               >
                 Submit Proof
-              </Button>
+              </ProtectedActionButton>
             )}
             {status === 'completed' && (
               <Button variant="outline" className="w-full h-11 font-semibold text-base" disabled>
@@ -604,8 +605,8 @@ const Challenges = () => {
     <div className="min-h-screen bg-background">
       {/* Modern iOS26 Header */}
       <ChallengesHeader
-        activeChallenges={userChallenges.filter(uc => uc.status === 'in_progress').length}
-        completedChallenges={userChallenges.filter(uc => uc.status === 'completed').length}
+        activeChallenges={user ? userChallenges.filter(uc => uc.status === 'in_progress').length : 0}
+        completedChallenges={user ? userChallenges.filter(uc => uc.status === 'completed').length : 0}
         onCreateChallenge={() => setShowCreateDialog(true)}
       />
 

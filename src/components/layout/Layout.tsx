@@ -137,7 +137,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     );
   }
 
-  if (!user) {
+  // Allow access without authentication - only show auth page on /auth route
+  if (!user && location.pathname === '/auth') {
     return <AuthPage />;
   }
 
@@ -145,57 +146,77 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="min-h-screen bg-background">
       {/* Top Bar - iOS 26 style with 3 separate glass elements - Hidden on Messages and Profile pages */}
       {!location.pathname.startsWith('/messages') && !location.pathname.startsWith('/profile') && (
-      <div className="fixed top-4 left-4 right-4 z-50 flex items-center justify-between gap-3 md:hidden">
-        {/* Profile Button - Left */}
-        <Link to="/profile" className="flex-shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-12 w-12 glass glass-transition rounded-2xl"
-          >
-            <img 
-              src={userCircleIcon} 
-              alt="Profile" 
-              className="h-6 w-6"
-            />
-          </Button>
-        </Link>
-
-        {/* Search Bar - Center */}
-        <div className="flex-1">
-          <form onSubmit={handleSearchSubmit} className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder={getSearchPlaceholder()}
-              value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="h-12 pl-10 pr-4 glass glass-transition rounded-2xl border-0 bg-transparent text-foreground placeholder:text-muted-foreground focus:ring-0"
-            />
-          </form>
-        </div>
-
-        {/* Messages Button - Right */}
-        <Link to="/messages" className="flex-shrink-0 relative">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-12 w-12 glass glass-transition rounded-2xl"
-          >
-            <img 
-              src={bubbleChatIcon} 
-              alt="Messages" 
-              className="h-6 w-6"
-            />
-          </Button>
-          {/* Notification Badge */}
-          {hasNewMessages && (
-            <div className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full border-2 border-white flex items-center justify-center">
-              <div className="h-2 w-2 bg-white rounded-full"></div>
-            </div>
+        <div className="fixed top-4 left-4 right-4 z-50 flex items-center justify-between gap-3 md:hidden">
+          {/* Profile Button - Left - Only show if user is logged in */}
+          {user ? (
+            <Link to="/profile" className="flex-shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-12 w-12 glass glass-transition rounded-2xl"
+              >
+                <img 
+                  src={userCircleIcon} 
+                  alt="Profile" 
+                  className="h-6 w-6"
+                />
+              </Button>
+            </Link>
+          ) : (
+            <Link to="/auth" className="flex-shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-12 w-12 glass glass-transition rounded-2xl"
+              >
+                <img 
+                  src={userCircleIcon} 
+                  alt="Sign In" 
+                  className="h-6 w-6"
+                />
+              </Button>
+            </Link>
           )}
-        </Link>
-      </div>
+
+          {/* Search Bar - Center */}
+          <div className="flex-1">
+            <form onSubmit={handleSearchSubmit} className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder={getSearchPlaceholder()}
+                value={searchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="h-12 pl-10 pr-4 glass glass-transition rounded-2xl border-0 bg-transparent text-foreground placeholder:text-muted-foreground focus:ring-0"
+              />
+            </form>
+          </div>
+
+          {/* Messages Button - Right - Only show if user is logged in */}
+          {user ? (
+            <Link to="/messages" className="flex-shrink-0 relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-12 w-12 glass glass-transition rounded-2xl"
+              >
+                <img 
+                  src={bubbleChatIcon} 
+                  alt="Messages" 
+                  className="h-6 w-6"
+                />
+              </Button>
+              {/* Notification Badge */}
+              {hasNewMessages && (
+                <div className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full border-2 border-white flex items-center justify-center">
+                  <div className="h-2 w-2 bg-white rounded-full"></div>
+                </div>
+              )}
+            </Link>
+          ) : (
+            <div className="flex-shrink-0 w-12 h-12" />
+          )}
+        </div>
       )}
 
       <main className={(() => {
@@ -213,6 +234,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       })()}>
         {children}
       </main>
+
+      {/* Modal root for portals */}
+      <div id="modal-root" />
     </div>
   );
 };

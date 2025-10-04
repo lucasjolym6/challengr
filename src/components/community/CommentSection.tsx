@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from "@/components/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ProtectedActionButton } from "@/components/auth/ProtectedActionButton";
 import { 
   Send, 
   Smile, 
@@ -111,7 +112,13 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
   };
 
   const handleSubmitComment = async () => {
-    if (!user || !newComment.trim()) return;
+    if (!user) {
+      // Cette fonction ne sera appelée que si l'utilisateur est connecté
+      // grâce au ProtectedActionButton
+      return;
+    }
+    
+    if (!newComment.trim()) return;
 
     try {
       const { data, error } = await supabase
@@ -193,7 +200,11 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
   };
 
   const handleReaction = async (commentId: string, reaction: 'fire' | 'muscle' | 'party') => {
-    if (!user) return;
+    if (!user) {
+      // Cette fonction ne sera appelée que si l'utilisateur est connecté
+      // grâce au ProtectedActionButton
+      return;
+    }
 
     // TODO: Implement comment reactions
     toast({
@@ -381,15 +392,15 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId }) => {
                 <Smile className="w-4 h-4" />
               </Button>
             </div>
-            <Button
+            <ProtectedActionButton
               size="sm"
-              onClick={handleSubmitComment}
+              onAuthed={handleSubmitComment}
               disabled={!newComment.trim()}
               className="rounded-full"
             >
               <Send className="w-4 h-4 mr-1" />
               {replyingTo ? 'Reply' : 'Comment'}
-            </Button>
+            </ProtectedActionButton>
           </div>
         </div>
       </div>
